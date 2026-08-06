@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Fiche de pensée",
+    "slug": "beck-form",
+    "scheme": "beckform",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E9ECF1"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "userInterfaceStyle": "automatic"
+    },
+    "android": {
+      "userInterfaceStyle": "automatic",
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#E9ECF1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-router", "expo-sqlite", "expo-localization", "expo-font"]
+  }
+}

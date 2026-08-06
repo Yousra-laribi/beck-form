@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9ECF1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161A24" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Fiche de pensée</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=Karla:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --encre:#1E2438;      /* texte principal et remplissages */
+    --sur-encre:#FFFFFF;  /* ce qui se pose SUR --encre */
+    --encre-2:#5A6276;
+    --encre-3:#8A91A1;
+    --papier:#E9ECF1;     /* fond de l'app */
+    --papier-0:rgba(233,236,241,0);
+    --carte:#FCFCFD;
+    --ligne:#D5DAE2;
+    --rail:#E6E9EE;       /* pistes de jauges */
+    --aide:#F1F4F8;
+    --scene-a:#E7EAEF;    /* décor hors app, écrans larges */
+    --scene-b:#D2D7DF;
+    --voile:rgba(30,36,56,.34);
+    --tension:#8B5E70;
+    --apaise:#5F8A6B;
+    --garde:#94733C;
+    --r:16px;
+    --pad:22px;
+  }
+
+  @media (prefers-color-scheme:dark){
+    :root{
+      --encre:#E8EBF1;
+      --sur-encre:#161A24;
+      --encre-2:#A4ACBB;
+      --encre-3:#79808F;
+      --papier:#161A24;
+      --papier-0:rgba(22,26,36,0);
+      --carte:#1E2330;
+      --ligne:#2F3644;
+      --rail:#272E3B;
+      --aide:#1B2029;
+      --scene-a:#1A1E28;
+      --scene-b:#0D1016;
+      --voile:rgba(0,0,0,.6);
+      --tension:#C58EA3;
+      --apaise:#7FB490;
+      --garde:#CFA35F;
+    }
+  }
+
+  *{box-sizing:border-box}
+
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    min-height:100dvh;
+    background:var(--papier);
+    font-family:"Karla",system-ui,sans-serif;
+    color:var(--encre);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,input,textarea{touch-action:manipulation}
+
+  /* ---------- L'app : plein écran par défaut ---------- */
+  .app{
+    width:100%;
+    height:100dvh;
+    background:var(--papier);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  @supports not (height:100dvh){ .app{height:100vh} }
+
+  /* À partir de la tablette, l'app se recentre en aperçu */
+  @media (min-width:600px){
+    body{
+      padding:24px 16px;
+      background:radial-gradient(circle at 50% 0%, var(--scene-a) 0%, var(--scene-b) 75%);
+    }
+    .app{
+      width:min(430px,100%);
+      height:min(900px, calc(100dvh - 48px));
+      border:1px solid var(--ligne);
+      border-radius:32px;
+      box-shadow:0 26px 64px -20px rgba(12,16,28,.4);
+    }
+  }
+
+  .screen{
+    flex:1 1 auto;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    padding:calc(env(safe-area-inset-top) + 20px) var(--pad) 0;
+    display:none;
+    scrollbar-width:none;
+  }
+  .screen::-webkit-scrollbar{display:none}
+  .screen.active{display:block}
+
+  .footer{
+    flex:0 0 auto;
+    padding:14px var(--pad) calc(env(safe-area-inset-bottom) + 18px);
+    background:linear-gradient(to top, var(--papier) 68%, var(--papier-0));
+  }
+
+  /* ---------- Typo ---------- */
+  #ey{display:flex;align-items:center;gap:8px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--encre-3);
+  }
+  h1{
+    font-family:"Newsreader",Georgia,serif;
+    font-weight:400;
+    font-size:clamp(28px,7.5vw,33px);
+    line-height:1.14;
+    letter-spacing:-.01em;
+    margin:7px 0 0;
+  }
+  .prompt{
+    font-family:"Newsreader",Georgia,serif;
+    font-weight:400;
+    font-size:clamp(23px,6.2vw,27px);
+    line-height:1.24;
+    margin:10px 0 4px;
+  }
+  .hint{
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--encre-2);
+    margin:6px 0 18px;
+  }
+  .num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+
+  /* ---------- Progression ---------- */
+  .steps{display:flex;gap:5px;align-items:center;padding:10px 0 2px}
+  .steps i{
+    flex:1;height:3px;border-radius:2px;background:var(--ligne);
+    transition:background .25s ease;
+  }
+  .steps i.done{background:var(--encre-2)}
+  .steps i.now{background:var(--encre)}
+  .stepcount{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--encre-3);
+    margin-left:8px;letter-spacing:.06em;
+  }
+
+  /* ---------- Champs ---------- */
+  textarea,input[type=text]{
+    width:100%;
+    font-family:"Karla",sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    color:var(--encre);
+    background:var(--carte);
+    border:1px solid var(--ligne);
+    border-radius:var(--r);
+    padding:14px 15px;
+    resize:none;
+    outline:none;
+  }
+  textarea::placeholder{color:#A9B0BD}
+  textarea:focus,input:focus{border-color:var(--encre);box-shadow:0 0 0 3px rgba(30,36,56,.09)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{
+    font-family:"Karla",sans-serif;
+    font-size:13.5px;
+    padding:8px 13px;
+    border-radius:999px;
+    border:1px solid var(--ligne);
+    background:var(--carte);
+    color:var(--encre-2);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  
+  .chip.on{background:var(--encre);border-color:var(--encre);color:var(--sur-encre)}
+  .chip:focus-visible{outline:2px solid var(--encre);outline-offset:2px}
+
+  /* ---------- Curseurs ---------- */
+  .gauge{margin-top:22px}
+  .gauge-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .gauge-head span:first-child{font-size:13.5px;color:var(--encre-2)}
+  .gauge-val{font-family:"IBM Plex Mono",monospace;font-size:19px;font-variant-numeric:tabular-nums}
+  input[type=range]{
+    width:100%;
+    accent-color:var(--tension);
+    height:30px;
+    cursor:pointer;
+  }
+  input[type=range].calme{accent-color:var(--apaise)}
+  .ticks{
+    display:flex;justify-content:space-between;
+    font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--encre-3);
+    margin-top:-4px;
+  }
+
+  /* ---------- Boutons ---------- */
+  .btn{
+    display:block;width:100%;min-height:50px;
+    font-family:"Karla",sans-serif;font-size:16px;font-weight:600;
+    padding:15px;border-radius:var(--r);border:1px solid var(--encre);
+    background:var(--encre);color:var(--sur-encre);cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn.ghost{background:transparent;color:var(--encre-2);border-color:transparent;font-weight:500;min-height:44px;padding:11px;margin-top:2px}
+  .btn:disabled{opacity:.32;cursor:not-allowed}
+  .btn:focus-visible{outline:2px solid var(--tension);outline-offset:3px}
+  .row{display:flex;gap:12px;align-items:center}
+  .row .btn{width:auto;flex:1}
+  .back{
+    background:none;border:none;padding:12px 4px;cursor:pointer;min-height:44px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;
+    color:var(--encre-3);text-transform:uppercase;
+  }
+
+  /* ---------- Accueil ---------- */
+  .card{
+    background:var(--carte);
+    border:1px solid var(--ligne);
+    border-radius:var(--r);
+    padding:15px 16px;
+    margin-bottom:10px;
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  
+  .card-date{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--encre-3);letter-spacing:.06em}
+  .card-thought{
+    font-family:"Newsreader",serif;font-size:17px;line-height:1.3;margin:6px 0 12px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .minidelta{display:flex;align-items:center;gap:9px}
+  .track{flex:1;height:4px;background:var(--rail);border-radius:2px;overflow:hidden}
+  .track b{display:block;height:100%;border-radius:2px}
+  .t-av b{background:var(--tension)}
+  .t-ap b{background:var(--apaise)}
+  .arrow{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--encre-3)}
+
+  .empty{
+    border:1px dashed var(--ligne);border-radius:var(--r);
+    padding:26px 20px;text-align:center;color:var(--encre-2);
+    font-size:14px;line-height:1.55;
+  }
+
+  /* ---------- Bilan (élément signature) ---------- */
+  .bascule{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:20px 18px 14px;margin:16px 0}
+  .bascule-lbl{display:flex;justify-content:space-between;align-items:baseline}
+  .bascule-lbl small{font-size:12px;color:var(--encre-2)}
+  .bascule-lbl .num{font-size:26px}
+  .av .num{color:var(--tension)}
+  .ap .num{color:var(--apaise)}
+
+  .serie{border-top:1px solid var(--ligne);margin-top:14px;padding-top:11px}
+  .serie div{display:flex;justify-content:space-between;font-size:12.5px;color:var(--encre-2);padding:3px 0}
+  .serie .num{color:var(--apaise)}
+  .serie p{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--encre-3);margin:0 0 6px}
+
+  #barAv{fill:var(--tension)}
+  #barAp{fill:var(--apaise)}
+  .s-av{stop-color:var(--tension);stop-opacity:.3}
+  .s-ap{stop-color:var(--apaise);stop-opacity:.3}
+
+  .recap{border-top:1px solid var(--ligne);padding:14px 0 0;margin-top:4px}
+  .recap dt{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--encre-3)}
+  .recap dd{margin:5px 0 16px;font-size:14.5px;line-height:1.5;color:var(--encre)}
+  .recap dd em{font-family:"Newsreader",serif;font-style:normal;font-size:17px}
+
+  .safety{
+    display:flex;gap:10px;align-items:flex-start;
+    margin-top:18px;padding-top:14px;border-top:1px solid var(--ligne);
+    font-size:12px;line-height:1.5;color:var(--encre-3);
+  }
+  .safety a{color:var(--garde);font-weight:600}
+  .safety .ic{width:16px;height:16px;margin-top:1px}
+
+  @media (hover:hover){
+    .chip:hover{border-color:var(--encre-3)}
+    .card:hover{border-color:var(--encre-3)}
+    .dinfo:hover{border-color:var(--encre-3);color:var(--encre)}
+  }
+
+  /* ---------- Icônes ---------- */
+  /* Un seul jeu de traits : 20px, 1.6, currentColor. La couleur vient du contexte. */
+  .ic{width:20px;height:20px;flex:0 0 auto;display:block;
+    fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .ic-t{color:var(--tension)}   /* tension, constat */
+  .ic-a{color:var(--apaise)}    /* apaisement, travail */
+  .ic-g{color:var(--garde)}     /* prudence, limite */
+  .ic-n{color:var(--encre-3)}   /* neutre */
+  .ic-lg{width:24px;height:24px}
+
+  /* ---------- En-tête et marque ---------- */
+  .hd{display:flex;align-items:center;gap:13px;padding-bottom:4px}
+  .mark{width:40px;height:34px;flex:0 0 auto;display:block;overflow:visible}
+  .hd-name{font-family:"Newsreader",serif;font-size:20px;line-height:1.05}
+  .hd-sub{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--encre-3);margin-top:5px}
+  .hd-sm .mark{width:29px;height:25px}
+  .hd-sm .hd-name{font-size:17px}
+  .hd-sm .hd-sub{font-size:9px;margin-top:3px}
+
+  .m-av{fill:var(--tension)}
+  .m-ap{fill:var(--apaise)}
+  .m-sl{fill:var(--tension);opacity:.22}
+  .mark rect,.mark path{transform-box:fill-box}
+
+  /* La marque rejoue le geste de l'app : une croyance qui se rétracte. */
+  .anim .m-av{transform-origin:left center;animation:mkDraw .55s cubic-bezier(.32,.72,0,1) both}
+  .anim .m-ap{transform-origin:left center;animation:mkDrop 1.4s cubic-bezier(.32,.72,0,1) .18s both}
+  .anim .m-sl{animation:mkFade .5s ease-out 1.15s both}
+  @keyframes mkDraw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes mkDrop{0%{transform:scaleX(0)}30%{transform:scaleX(2.353)}58%{transform:scaleX(2.353)}100%{transform:scaleX(1)}}
+  @keyframes mkFade{from{opacity:0}to{opacity:.22}}
+
+  .rise{animation:rise .6s cubic-bezier(.32,.72,0,1) both}
+  .r1{animation-delay:.10s}
+  .r2{animation-delay:.24s}
+  .r3{animation-delay:.38s}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+  /* ---------- Écran « Comprendre » ---------- */
+  .lede{font-family:"Newsreader",serif;font-size:19px;line-height:1.45;color:var(--encre-2);margin:12px 0 0}
+  .sec{border-top:1px solid var(--ligne);margin-top:28px;padding-top:20px}
+  .sec h3{font-family:"Newsreader",serif;font-weight:400;font-size:21px;margin:0 0 11px}
+  .sec p{font-size:14.5px;line-height:1.62;color:var(--encre-2);margin:0 0 13px}
+  .sec p:last-child{margin-bottom:0}
+  .sec strong{color:var(--encre);font-weight:600}
+
+  /* Schéma 1 : deux lectures d'une même scène */
+  .demo{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:16px 17px;margin-top:6px}
+  .demo-sit{font-size:13.5px;line-height:1.5;color:var(--encre-2);
+    border-left:2px solid var(--ligne);padding-left:12px;margin-bottom:15px}
+  .toggle{display:flex;gap:8px;margin-bottom:4px}
+  .toggle button{
+    flex:1;min-height:62px;padding:11px 12px;cursor:pointer;text-align:left;
+    font-family:"Newsreader",serif;font-size:15px;line-height:1.3;
+    border:1px solid var(--ligne);border-radius:12px;background:transparent;color:var(--encre-2);
+    transition:background .2s ease,color .2s ease,border-color .2s ease;
+  }
+  .toggle button.on{border-color:var(--encre);background:var(--encre);color:var(--sur-encre)}
+  .demo-row{display:flex;gap:12px;padding:12px 0 0;margin-top:12px;border-top:1px solid var(--ligne)}
+  .demo-row b{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--encre-3);flex:0 0 76px;padding-top:3px}
+  .demo-row span{font-size:13.5px;line-height:1.5;flex:1}
+  .emobar{height:5px;border-radius:3px;background:var(--rail);margin-top:8px;overflow:hidden}
+  .emobar i{display:block;height:100%;border-radius:3px;background:var(--tension);
+    transition:width .45s cubic-bezier(.32,.72,0,1)}
+
+  /* Schéma 2 : la boucle */
+  .modele{width:100%;height:auto;display:block;margin:4px 0 0}
+  .caption{font-size:12.5px;line-height:1.45;color:var(--encre-3);text-align:center;margin:10px 0 0}
+  .nd{fill:var(--carte);stroke:var(--ligne)}
+  .nd-key{stroke:var(--tension);stroke-width:1.6}
+  .ndt{fill:var(--encre);font-family:"Karla",sans-serif;font-size:14px;text-anchor:middle}
+  .ndt-s{fill:var(--tension);font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-anchor:middle}
+  .ln{stroke:var(--encre-3);stroke-width:1;fill:none}
+  .mk{fill:var(--encre-3)}
+
+  /* Schéma 3 : la fiche en sept temps */
+  .tour{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);padding:16px 17px 17px;margin-top:6px}
+  .st-dots{display:flex;gap:5px;align-items:center;margin-bottom:6px}
+  .st-dots button{flex:1;height:30px;border:none;background:none;padding:0;cursor:pointer;position:relative}
+  .st-dots button::before{content:"";position:absolute;left:0;right:0;top:13px;height:4px;
+    border-radius:2px;background:var(--ligne);transition:background .2s ease}
+  .st-dots button.on::before{background:var(--encre)}
+  .st-dots button:focus-visible{outline:2px solid var(--encre);outline-offset:1px;border-radius:4px}
+  .st-body{min-height:190px}
+  .st-num{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;color:var(--encre-3)}
+  .st-name{display:flex;align-items:center;gap:10px;font-family:"Newsreader",serif;font-weight:400;font-size:21px;margin:5px 0 7px}
+  .st-def{font-size:13.5px;line-height:1.55;color:var(--encre-2);margin:0 0 13px}
+  .st-ex{background:var(--aide);border-radius:12px;padding:13px 14px;font-size:14px;line-height:1.5}
+  .st-ex em{font-family:"Newsreader",serif;font-style:normal;font-size:16.5px}
+  .st-nav{display:flex;gap:12px;align-items:center;margin-top:15px}
+  .st-nav .btn{flex:1;min-height:44px;padding:11px;font-size:14.5px}
+  .mini{display:flex;align-items:center;gap:9px;margin-top:12px}
+
+  /* Repli « en savoir plus » */
+  .plus{margin-top:6px;border-top:1px solid var(--ligne)}
+  .plus summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;
+    align-items:center;gap:12px;min-height:46px;font-size:14px;color:var(--encre-2)}
+  .plus summary::-webkit-details-marker{display:none}
+  .plus summary::after{content:"+";font-family:"IBM Plex Mono",monospace;font-size:16px;color:var(--encre-3)}
+  .plus[open] summary::after{content:"\2212"}
+  .plus > p{margin:0 0 13px}
+  .plus > p:last-child{margin-bottom:14px}
+
+  .facts{list-style:none;margin:2px 0 0;padding:0}
+  .facts li{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--ligne);
+    font-size:14.5px;line-height:1.55;color:var(--encre-2)}
+  .facts li:last-child{border-bottom:0}
+  .facts .ic{margin-top:2px}
+  .facts b{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--tension);flex:0 0 auto;padding-top:3px}
+  .facts strong{color:var(--encre);font-weight:600}
+
+  .choix{list-style:none;margin:2px 0 0;padding:0}
+  .choix li{display:flex;gap:13px;padding:14px 0;border-bottom:1px solid var(--ligne)}
+  .choix .ic{margin-top:2px}
+  .choix li:last-child{border-bottom:0;padding-bottom:0}
+  .choix strong{display:block;font-size:15px;margin-bottom:4px}
+  .choix span{font-size:13.5px;line-height:1.55;color:var(--encre-2)}
+
+  .mot{border-left:2px solid var(--tension);padding:3px 0 3px 15px;margin-top:16px}
+  .mot p{font-family:"Newsreader",serif;font-size:16.5px;line-height:1.5;margin:0 0 11px}
+  .mot .sign{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--encre-3);margin:0}
+
+  .note{background:var(--aide);border-radius:var(--r);padding:16px 17px;margin-top:6px}
+  .note-g{border-left:3px solid var(--garde)}
+  .note-hd{display:flex;align-items:center;gap:9px;color:var(--garde);
+    font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+  .note p{font-size:13.5px;line-height:1.55;margin:0 0 10px}
+  .note p:last-child{margin-bottom:0}
+  .lien{background:none;border:none;padding:10px 0;margin-top:4px;cursor:pointer;
+    font-family:"Karla",sans-serif;font-size:13.5px;color:var(--encre-2);
+    border-bottom:1px solid var(--ligne);width:100%;text-align:left}
+
+  /* ---------- Liste des distorsions ---------- */
+  .drow{
+    display:flex;align-items:center;gap:12px;
+    background:var(--carte);border:1px solid var(--ligne);border-radius:var(--r);
+    padding:12px 13px;margin-bottom:8px;
+  }
+  .drow.on{border-color:var(--encre)}
+  .dbox{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ligne);flex:0 0 auto;position:relative}
+  .drow.on .dbox{background:var(--encre);border-color:var(--encre)}
+  .drow.on .dbox::after{
+    content:"";position:absolute;left:5.5px;top:2px;width:4px;height:9px;
+    border:solid var(--sur-encre);border-width:0 1.5px 1.5px 0;transform:rotate(45deg);
+  }
+  .dsel{flex:1;text-align:left;background:none;border:none;padding:0;cursor:pointer;font-family:"Karla",sans-serif}
+  .dname{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:500;color:var(--encre)}
+  .dtell{font-size:12.5px;line-height:1.35;color:var(--encre-3);margin-top:3px}
+  .dinfo{
+    flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--ligne);background:none;cursor:pointer;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--encre-2);
+  }
+  
+  .dsel:focus-visible,.dinfo:focus-visible{outline:2px solid var(--encre);outline-offset:2px}
+
+  /* ---------- Aide contextuelle ---------- */
+  .aide{background:var(--aide);border:1px solid var(--ligne);border-radius:var(--r);padding:15px 16px;margin-top:18px}
+  .aide > p{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--encre-3);margin:0}
+  .aide h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin:14px 0 5px}
+  .aide ul{margin:0;padding-left:15px}
+  .aide li{font-size:13.5px;line-height:1.5;color:var(--encre-2);margin-bottom:5px}
+
+  /* ---------- Fiche explicative ---------- */
+  .sheet-wrap{position:absolute;inset:0;z-index:20;display:flex;align-items:flex-end}
+  .sheet-wrap[hidden]{display:none}
+  .sheet-bg{position:absolute;inset:0;background:var(--voile);opacity:0;transition:opacity .22s ease}
+  .sheet{
+    position:relative;width:100%;overscroll-behavior:contain;max-height:88%;overflow-y:auto;
+    background:var(--carte);border-radius:24px 24px 0 0;
+    padding:8px var(--pad) calc(env(safe-area-inset-bottom) + 26px);scrollbar-width:none;
+    transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);
+    box-shadow:0 -12px 44px rgba(12,16,28,.28);
+  }
+  .sheet::-webkit-scrollbar{display:none}
+  .sheet-wrap.open .sheet-bg{opacity:1}
+  .sheet-wrap.open .sheet{transform:translateY(0)}
+  .grip{width:34px;height:4px;border-radius:2px;background:var(--ligne);margin:4px auto 14px}
+  .sheet h2{display:flex;align-items:center;gap:11px;font-family:"Newsreader",serif;font-weight:400;font-size:25px;margin:0 0 4px}
+  .sheet .quote{font-family:"Newsreader",serif;font-size:16px;color:var(--encre-2);
+    border-left:2px solid var(--tension);padding-left:11px;margin:14px 0 18px;line-height:1.4}
+  .sheet section{border-top:1px solid var(--ligne);padding-top:13px;margin-top:16px}
+  .sheet section > p{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--encre-3);margin:0 0 7px}
+  .sheet section div{font-size:14.5px;line-height:1.55}
+  .sheet ul{margin:0;padding-left:16px}
+  .sheet li{font-size:14.5px;line-height:1.5;margin-bottom:7px}
+  .glossref{background:none;border:none;padding:0;cursor:pointer;font:inherit;
+    color:var(--encre);border-bottom:1px dotted var(--encre-3)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  .lang{display:flex;gap:2px;margin-left:auto;flex:0 0 auto;
+    border:1px solid var(--ligne);border-radius:999px;padding:2px;background:var(--carte)}
+  .lang button{
+    font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;
+    min-width:32px;min-height:28px;padding:0 8px;cursor:pointer;
+    border:none;border-radius:999px;background:none;color:var(--encre-3);
+  }
+  .lang button.on{background:var(--encre);color:var(--sur-encre)}
+  .lang button:focus-visible{outline:2px solid var(--encre);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ COMPRENDRE ============ -->
+  <div class="screen" id="s-intro">
+    <header class="hd anim">
+      <svg class="mark" viewBox="0 0 40 34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fiche de pensée">
+        <rect class="m-av" x="0" y="2" width="40" height="7" rx="3.5"/>
+        <path class="m-sl" d="M0,9 L40,9 L17,25 L0,25 Z"/>
+        <rect class="m-ap" x="0" y="25" width="17" height="7" rx="3.5"/>
+      </svg>
+      <div class="rise">
+        <div class="hd-name" data-t="appName"></div>
+        <div class="hd-sub" data-t="appSub"></div>
+      </div>
+      <div class="lang" role="group" aria-label="Language">
+        <button id="lg-fr" onclick="setLang('fr')">FR</button>
+        <button id="lg-en" onclick="setLang('en')">EN</button>
+      </div>
+    </header>
+    <h1 class="rise r2" data-t="heroTitre"></h1>
+    <p class="lede rise r3" data-t="heroLede"></p>
+
+    <div class="sec">
+      <h3 data-t="s1Titre"></h3>
+      <p data-t="s1Intro"></p>
+      <div class="demo">
+        <div class="demo-sit" data-t="s1Situation"></div>
+        <div class="toggle">
+          <button id="dm-a" onclick="demo('a')" data-t="s1LectureA"></button>
+          <button id="dm-b" onclick="demo('b')" data-t="s1LectureB"></button>
+        </div>
+        <div id="dm-out"></div>
+      </div>
+      <p class="caption" data-t="s1Caption"></p>
+    </div>
+
+    <div class="sec">
+      <h3 data-t="s2Titre"></h3>
+      <p data-th="s2Intro"></p>
+      <svg class="modele" viewBox="0 0 292 272" xmlns="http://www.w3.org/2000/svg" role="img" data-alt="s2Alt">
+        <defs>
+          <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" class="mk"/>
+          </marker>
+        </defs>
+        <rect class="nd" x="4" y="0" width="238" height="42" rx="12"/>
+        <text class="ndt" x="123" y="26" data-t="nSituation"></text>
+        <line class="ln" x1="123" y1="42" x2="123" y2="64" marker-end="url(#ar)"/>
+        <rect class="nd nd-key" x="4" y="68" width="238" height="56" rx="12"/>
+        <text class="ndt" x="123" y="92" data-t="nPensee"></text>
+        <text class="ndt-s" x="123" y="110" data-t="nAgit"></text>
+        <line class="ln" x1="123" y1="124" x2="123" y2="146" marker-end="url(#ar)"/>
+        <rect class="nd" x="4" y="150" width="238" height="42" rx="12"/>
+        <text class="ndt" x="123" y="176" data-t="nEmotion"></text>
+        <line class="ln" x1="123" y1="192" x2="123" y2="214" marker-end="url(#ar)"/>
+        <rect class="nd" x="4" y="218" width="238" height="42" rx="12"/>
+        <text class="ndt" x="123" y="244" data-t="nComportement"></text>
+        <path class="ln" d="M242,239 H272 Q282,239 282,229 V31 Q282,21 272,21 H250" marker-end="url(#ar)"/>
+      </svg>
+      <p class="caption" data-t="s2Caption"></p>
+      <p style="margin-top:16px" data-t="s2Apres"></p>
+    </div>
+
+    <div class="sec">
+      <h3 data-t="s3Titre"></h3>
+      <p data-t="s3Intro"></p>
+      <div class="tour">
+        <div class="st-dots" id="st-dots"></div>
+        <div class="st-body" id="st-body"></div>
+        <div class="st-nav">
+          <button class="back" onclick="tour(ti-1)" data-t="precedent"></button>
+          <button class="btn" id="st-next" onclick="tour(ti+1)"></button>
+        </div>
+      </div>
+      <p class="caption" data-t="s3Caption"></p>
+    </div>
+
+    <div class="sec">
+      <h3 data-t="s4Titre"></h3>
+      <ul class="facts" id="facts"></ul>
+      <details class="plus">
+        <summary data-t="s4Repli"></summary>
+        <p data-t="s4ReplA"></p>
+        <p data-t="s4ReplB"></p>
+      </details>
+    </div>
+
+    <div class="sec">
+      <h3 data-t="s5Titre"></h3>
+      <p data-t="s5Intro"></p>
+      <ul class="choix" id="choix"></ul>
+      <!-- BROUILLON - a reecrire avec vos propres mots, ou a supprimer. -->
+      <div class="mot">
+        <p data-t="s5MotA"></p>
+        <p data-t="s5MotB"></p>
+        <p class="sign" data-t="s5Sign"></p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3 data-t="s6Titre"></h3>
+      <div class="note note-g">
+        <p class="note-hd"><i data-ico="alert" data-cls="ic-g"></i><span data-t="limites"></span></p>
+        <p data-t="s6A"></p>
+        <p data-t="s6B"></p>
+        <p data-th="s6C"></p>
+      </div>
+    </div>
+    <div style="height:26px"></div>
+  </div>
+
+  <!-- ============ JOURNAL ============ -->
+  <div class="screen active" id="s-home">
+    <header class="hd hd-sm">
+      <svg class="mark" viewBox="0 0 40 34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fiche de pensée">
+        <rect class="m-av" x="0" y="2" width="40" height="7" rx="3.5"/>
+        <path class="m-sl" d="M0,9 L40,9 L17,25 L0,25 Z"/>
+        <rect class="m-ap" x="0" y="25" width="17" height="7" rx="3.5"/>
+      </svg>
+      <div>
+        <div class="hd-name" data-t="appName"></div>
+        <div class="hd-sub" data-t="journal"></div>
+      </div>
+      <div class="lang" role="group" aria-label="Language">
+        <button id="lg-fr" onclick="setLang('fr')">FR</button>
+        <button id="lg-en" onclick="setLang('en')">EN</button>
+      </div>
+    </header>
+    <h1 data-t="vosFiches"></h1>
+    <p class="hint" data-t="journalHint"></p>
+    <div id="list"></div>
+    <button class="lien" onclick="intro()" data-t="comprendre"></button>
+    <div class="safety">
+      <i data-ico="alert" data-cls="ic-g"></i>
+      <span data-th="safety"></span>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <!-- ============ ETAPES ============ -->
+  <div class="screen" id="s-step">
+    <div class="steps" id="bar"></div>
+    <div class="eyebrow" id="ey"></div>
+    <div class="prompt" id="q"></div>
+    <div class="hint" id="h"></div>
+    <div id="field"></div>
+    <div style="height:24px"></div>
+  </div>
+
+  <!-- ============ BILAN / DETAIL ============ -->
+  <div class="screen" id="s-done">
+    <div class="eyebrow" id="d-ey"></div>
+    <h1 id="d-title"></h1>
+    <div class="bascule">
+      <div class="bascule-lbl av"><small id="b-avlbl"></small><span class="num" id="b-av">-</span></div>
+      <svg viewBox="0 0 300 92" width="100%" height="92" aria-hidden="true" style="display:block;margin:6px 0">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" class="s-av"/>
+            <stop offset="100%" class="s-ap"/>
+          </linearGradient>
+        </defs>
+        <rect id="barAv" x="0" y="0" height="10" rx="5"/>
+        <path id="slope" fill="url(#g)"/>
+        <rect id="barAp" x="0" y="82" height="10" rx="5"/>
+      </svg>
+      <div class="bascule-lbl ap"><small id="b-aplbl"></small><span class="num" id="b-ap">-</span></div>
+      <div id="serie"></div>
+    </div>
+    <dl class="recap" id="recap"></dl>
+    <div style="height:16px"></div>
+  </div>
+
+  <div class="footer" id="foot"></div>
+
+  <div class="sheet-wrap" id="sheet" hidden>
+    <div class="sheet-bg" onclick="closeSheet()"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title">
+      <div class="grip"></div>
+      <div id="sheet-body"></div>
+    </div>
+  </div>
+</div>
+<script>
+/* =======================================================================
+   LANGUES
+   Les identifiants (dist.*, cles d'etapes, ids d'emotions) sont stables.
+   Seuls les libelles changent : une fiche enregistree en francais reste
+   lisible apres passage en anglais.
+   ======================================================================= */
+const I18N = {
+
+fr:{
+ui:{
+  appName:"Fiche de pensée", appSub:"Restructuration cognitive", journal:"Journal",
+  heroTitre:"Rattraper la phrase qu'on ne s'entend pas dire",
+  heroLede:"Quand une émotion monte d'un coup, une phrase l'a précédée. Elle passe si vite qu'on n'en ressent que l'effet.",
+
+  s1Titre:"Essayez", s1Intro:"Une même scène, deux phrases possibles. Touchez l'une puis l'autre.",
+  s1Situation:"Vous écrivez à un ami. Trois heures plus tard, toujours pas de réponse.",
+  s1LectureA:"« Il m'ignore. »", s1LectureB:"« Il doit être pris. »",
+  s1Caption:"Même fait, même personne, même journée. Ce qui change tient en une phrase.",
+  rEmotion:"Émotion", rReaction:"Réaction", rSuite:"Et ensuite",
+
+  s2Titre:"Le modèle",
+  s2Intro:"Ce n'est pas la situation qui déclenche l'émotion, c'est l'interprétation qu'on en fait. Cette idée, formulée par le psychiatre <strong>Aaron Beck</strong> dans les années 1960, est le socle des thérapies cognitivo-comportementales.",
+  s2Alt:"Schéma : la situation mène à une pensée automatique, qui mène à une émotion, puis à un comportement, qui alimente à nouveau la situation.",
+  s2Caption:"La boucle s'entretient seule : éviter soulage sur le moment, et confirme la crainte.",
+  s2Apres:"La pensée automatique est le seul maillon sur lequel on peut agir directement. On ne choisit pas ce qui nous arrive, ni ce qu'on ressent. On peut examiner ce qu'on se dit.",
+  nSituation:"Situation", nPensee:"Pensée automatique", nAgit:"LÀ OÙ LA FICHE AGIT",
+  nEmotion:"Émotion et sensations", nComportement:"Comportement",
+
+  s3Titre:"Une fiche, en sept temps", s3Intro:"Chaque fiche suit le même ordre. Parcourez un exemple complet.",
+  s3Caption:"L'ordre n'est pas décoratif : chercher une autre lecture avant d'avoir listé les faits ne produit que de la pensée positive, qui ne tient pas.",
+  colonne:"COLONNE",
+
+  s4Titre:"Ce que dit la recherche",
+  s4Repli:"Pourquoi écrire plutôt que ruminer ?",
+  s4ReplA:"Tant qu'elle reste en tête, la pensée est vécue comme une évidence : elle se confond avec le réel. Écrite, elle devient une phrase — un objet daté, qu'on peut relire et contester.",
+  s4ReplB:"Ce léger décalage entre soi et sa pensée est considéré comme l'un des mécanismes actifs de l'exercice. C'est aussi pour ça que remplir une fiche de tête ne produit pas le même effet.",
+
+  s5Titre:"Pourquoi cette app",
+  s5Intro:"Il existe déjà beaucoup d'applications de bien-être. Celle-ci est née de quelques partis pris, assumés plutôt que subis.",
+  s5MotA:"Cette app a d'abord été écrite pour moi. Je voulais comprendre de l'intérieur comment fonctionne la restructuration cognitive, et la seule façon honnête de le savoir était de m'y astreindre, puis de construire l'outil que j'aurais voulu avoir sous la main.",
+  s5MotB:"Ce n'est donc pas un produit pensé pour vous. C'est un carnet rendu public. Prenez-en ce qui vous sert, et rien de plus.",
+  s5Sign:"L'auteur",
+
+  s6Titre:"Ce que cette app n'est pas", limites:"Limites",
+  s6A:"Ni un diagnostic, ni un traitement, ni un professionnel. Elle ne convient pas au travail sur un traumatisme, ni aux périodes où l'on va vraiment mal : ces situations demandent quelqu'un en face.",
+  s6B:"Si remplir une fiche vous laisse systématiquement plus mal qu'avant, ce n'est pas le bon outil au bon moment.",
+  s6C:"<strong>En cas de détresse : 3114</strong>, gratuit, 24 h/24.",
+  safety:"Cette app n'est pas un soin. En cas de détresse : <a href=\"#\">3114</a>, gratuit, 24 h/24.",
+
+  vosFiches:"Vos fiches",
+  journalHint:"Une fiche par situation qui a fait monter une émotion forte. Sept étapes, cinq minutes.",
+  vide:"Aucune fiche pour l'instant.<br>La prochaine fois qu'une émotion monte fort, ouvrez-en une.",
+  comprendre:"Comprendre la méthode →",
+
+  commencer:"Commencer", retourJournal:"Retour au journal", nouvelleFiche:"Nouvelle fiche",
+  precedent:"Précédent", suivant:"Suivant", revenirDebut:"Revenir au début",
+  continuer:"Continuer", retour:"Retour", annuler:"Annuler", fermer:"Fermer",
+  voirBilan:"Voir le bilan", enregistrer:"Enregistrer la fiche", fermerSansEnreg:"Fermer sans enregistrer",
+
+  intensite:"Intensité", jycrois:"J'y crois", jycroisMaintenant:"J'y crois maintenant",
+  intensiteMaintenant:"Intensité maintenant",
+  bilan:"Bilan", ceQuiABouge:"Ce qui a bougé", ficheDu:"Fiche du",
+  relireAFroid:"Relire à froid", etAujourdhui:"Et aujourd'hui ?",
+  jycroyais:"J'y croyais", apresLaFiche:"Après la fiche", aujourdhui:"Aujourd'hui",
+  relectures:"Relectures", finFiche:"Fin de la fiche", reevaluer:"Réévaluer aujourd'hui",
+  reevalQ:"À quel point cette phrase vous paraît-elle vraie maintenant ?",
+  sansIntitule:"Sans intitulé", aucuneIdentifiee:"Aucune identifiée",
+
+  lSituation:"Situation", lEmotion:"Émotion", lPensee:"Pensée automatique",
+  lDistorsions:"Distorsions", lPour:"Arguments pour", lContre:"Arguments contre",
+  lAlternative:"Pensée alternative",
+
+  aideTitre:"Questions liées à vos distorsions",
+  aideVide:"Aucune distorsion cochée à l'étape 4 : revenez en arrière si vous voulez des questions ciblées.",
+  shEyebrow:"Distorsion cognitive", shQuoi:"Ce que c'est", shCout:"Ce que ça coûte",
+  shComment:"Comment la restructurer", shCocher:"C'est bien ça, cocher", shRetirer:"Retirer de ma fiche",
+  comprendreLabel:"Comprendre :"
+},
+
+emotions:{anxiete:"Anxiété",tristesse:"Tristesse",colere:"Colère",honte:"Honte",
+  culpabilite:"Culpabilité",peur:"Peur",decouragement:"Découragement"},
+
+lectures:{
+  a:{emotion:"Anxiété, honte", niveau:75,
+     compo:"Je relis mes messages en cherchant ce qui a pu le vexer. Je n'ose pas relancer.",
+     suite:"Le silence dure, donc l'interprétation se confirme. Je m'éloigne un peu."},
+  b:{emotion:"Léger agacement", niveau:20,
+     compo:"Je passe à autre chose. Je relancerai demain si besoin.",
+     suite:"Il répond le lendemain matin. L'épisode ne laisse rien."}},
+
+facts:[
+  {t:"La TCC est l'une des psychothérapies les plus étudiées.", d:"Son efficacité sur la dépression et les troubles anxieux repose sur des centaines d'essais contrôlés."},
+  {t:"En autonomie, ça marche moins bien qu'accompagné.", d:"Le bénéfice est réel, mais nettement plus grand quand un professionnel suit, même de loin."},
+  {t:"C'est un entraînement, pas une révélation.", d:"L'effet vient de la répétition. Les premières fiches sont laborieuses, et c'est normal."}],
+
+choix:[
+  {ic:"carnet", t:"Un carnet, pas un coach.", d:"L'app pose les questions, vous écrivez les réponses. Une pensée reformulée par quelqu'un d'autre — ou par une machine — ne déloge rien : le travail est justement de la formuler soi-même."},
+  {ic:"bellOff", t:"Aucune notification, aucune série à tenir.", d:"Une fiche se remplit quand une émotion monte, pas parce qu'un badge le réclame. Les mécaniques d'engagement transformeraient l'introspection en corvée quotidienne."},
+  {ic:"history", t:"Rien n'est jamais réécrit.", d:"Une fiche ancienne reste telle qu'elle a été remplie. On peut réévaluer aujourd'hui ce qu'on croyait hier, jamais le corriger — sinon le trajet parcouru disparaît."},
+  {ic:"lock", t:"Vos fiches ne quittent pas votre téléphone.", d:"Ce qui s'écrit ici est ce qu'on a de plus intime. Pas de compte, pas de serveur, pas de statistiques d'usage."},
+  {ic:"eye", t:"Ce qu'elle ne sait pas faire est écrit aussi.", d:"Une app d'auto-thérapie qui promet de soigner ment. Ses limites sont sur la même page que ses promesses."}],
+
+tour:[
+  {n:"Situation", def:"Les faits observables, sans interprétation. Ce qu'une caméra aurait filmé.",
+   ex:"Réunion de 14 h. Mon manager coupe ma présentation au bout de deux minutes."},
+  {n:"Émotion", def:"Ce que vous ressentez, et son intensité de 0 à 100. Nommer une émotion, c'est déjà en délimiter les contours.",
+   ex:"Honte, anxiété — <span class=\"num\">70 / 100</span>"},
+  {n:"Pensée automatique", def:"La phrase exacte qui a traversé l'esprit, et le degré auquel vous y croyez sur le moment.",
+   ex:"<em>« Il me trouve incompétent. »</em><br>J'y crois à <span class=\"num\">85 %</span>"},
+  {n:"Distorsion", def:"Le mécanisme qui déforme la pensée. Huit sont répertoriés dans l'app, avec les questions qui les défont.",
+   ex:"Lecture de pensée · Catastrophisme"},
+  {n:"Arguments pour", def:"Les preuves qui soutiennent la pensée. On commence par là, honnêtement, sinon l'exercice n'est qu'une auto-persuasion.",
+   ex:"Il m'a interrompu. Il a regardé son téléphone deux fois."},
+  {n:"Arguments contre", def:"Les faits qui la contredisent. L'étape la plus difficile, et celle qui fait le travail.",
+   ex:"Il interrompt tout le monde. Il m'a confié le dossier client le mois dernier."},
+  {n:"Pensée alternative", def:"Une version plus juste — ni positive, ni rassurante. Puis on réévalue à froid.",
+   ex:"<em>« Il gère mal le temps en réunion. Ça ne dit rien de mon travail. »</em>", fin:true}],
+
+steps:[
+  {ey:"Colonne 1 · Faits", q:"Que s'est-il passé ?", h:"Uniquement les faits observables : où, quand, avec qui. Pas encore d'interprétation.",
+   ph:"Réunion de 14 h. Mon manager a coupé ma présentation au bout de deux minutes."},
+  {ey:"Colonne 2 · Émotion", q:"Qu'avez-vous ressenti ?", h:"Choisissez ce qui domine, puis situez l'intensité au moment le plus fort."},
+  {ey:"Colonne 3 · Pensée automatique", q:"Quelle phrase vous a traversé l'esprit ?", h:"Sa formulation exacte, au présent, telle qu'elle est arrivée.",
+   ph:"Il me trouve incompétent, je vais finir par être écarté."},
+  {ey:"Colonne 4 · Distorsion", q:"À quoi ressemble cette pensée ?", h:"Nommer le mécanisme aide à décoller de la pensée. Touchez « ? » pour comprendre chacun."},
+  {ey:"Colonne 5 · Arguments pour", q:"Qu'est-ce qui appuie cette pensée ?", h:"Des preuves, pas des impressions. Ce qu'un observateur extérieur aurait pu constater.",
+   ph:"Il m'a interrompu. Il a regardé son téléphone deux fois."},
+  {ey:"Colonne 6 · Arguments contre", q:"Et qu'est-ce qui la contredit ?", h:"Le plus difficile, et le plus utile. Les questions ci-dessous viennent des distorsions que vous avez cochées.",
+   ph:"Il interrompt tout le monde. Il m'a confié le dossier client le mois dernier."},
+  {ey:"Colonne 7 · Pensée alternative", q:"Quelle version tient mieux debout ?", h:"Ni positive ni rassurante : plus juste. Puis réévaluez à froid.",
+   ph:"Il gère mal le temps en réunion. Ça ne dit rien de la valeur de mon travail."}],
+
+dist:{
+  catastrophisme:{nom:"Catastrophisme",
+    tell:"Le pire scénario est traité comme le scénario probable.",
+    def:"Vous partez d'un fait incertain et déroulez la chaîne jusqu'à l'issue la plus grave, puis vous raisonnez comme si cette issue était acquise.",
+    ex:"« Il a mal pris ma remarque → il va m'en vouloir → je vais être écarté du projet. »",
+    impact:"Le corps ne distingue pas un danger imaginé d'un danger réel : l'alarme se déclenche à pleine puissance pour un événement qui n'a pas eu lieu. Comme la peur pousse à éviter, vous ne vérifiez jamais si le scénario tenait debout.",
+    q:["Quel est le pire scénario, le meilleur, et le plus probable ?","Sur les fois où j'ai eu cette crainte, combien se sont réalisées ?","Si le pire arrivait vraiment, qu'est-ce que je ferais concrètement ?"]},
+  tout_ou_rien:{nom:"Tout ou rien",
+    tell:"Deux cases seulement : réussi ou raté.",
+    def:"Vous évaluez en catégories absolues, sans degré intermédiaire. Tout ce qui n'atteint pas le standard bascule automatiquement du côté de l'échec.",
+    ex:"« J'ai bafouillé à l'oral, ma présentation était nulle. »",
+    impact:"Une performance correcte est comptabilisée comme un échec, donc l'effort n'est jamais récompensé. C'est le moteur du perfectionnisme, et souvent de l'abandon.",
+    q:["Sur une échelle de 0 à 100, où est-ce que ça se situe vraiment ?","Quelles parties ont fonctionné, même partiellement ?","Qu'est-ce que je dirais à un collègue qui me montre ce résultat ?"]},
+  lecture_pensee:{nom:"Lecture de pensée",
+    tell:"Vous savez ce que l'autre pense, sans le lui avoir demandé.",
+    def:"Vous attribuez à quelqu'un une opinion ou une intention, à partir d'un signe ténu, et vous la traitez comme une information établie.",
+    ex:"« Elle a répondu brièvement, elle me trouve pénible. »",
+    impact:"Vous réagissez à une hypothèse comme à un fait. Le plus coûteux est la boucle : vous prenez vos distances pour vous protéger, l'autre perçoit la froideur et se distancie à son tour.",
+    q:["Quelle preuve observable ai-je de ce qu'elle pense ?","Quelles autres raisons pourraient expliquer son comportement ?","Qu'est-ce qui m'empêche de lui demander directement ?"]},
+  generalisation:{nom:"Généralisation",
+    tell:"Toujours, jamais, personne, tout le monde.",
+    def:"Un événement isolé devient une règle permanente, appliquée au passé comme à l'avenir.",
+    ex:"« Cet entretien s'est mal passé, je ne trouverai jamais de poste. »",
+    impact:"Un incident ponctuel repeint toute votre histoire. Comme la règle se présente comme définitive, elle rend l'action inutile : à quoi bon retenter si ça ne marche jamais ?",
+    q:["Combien de fois exactement est-ce arrivé ?","Puis-je citer au moins un contre-exemple ?","Si je remplace « jamais » par « cette fois-ci », est-ce que la phrase reste vraie ?"]},
+  personnalisation:{nom:"Personnalisation",
+    tell:"Vous êtes la cause, même quand vous n'êtes qu'un facteur parmi d'autres.",
+    def:"Vous vous attribuez la responsabilité d'un événement produit par un ensemble de causes, dont beaucoup vous échappaient.",
+    ex:"« Le projet a pris du retard, c'est de ma faute. »",
+    impact:"Vous portez une culpabilité proportionnée à une responsabilité que vous n'avez pas. Et parce que la cause supposée est vous, la solution supposée est vous aussi : vous vous épuisez à corriger ce qui ne dépendait pas de vous.",
+    q:["Si je liste toutes les causes, quelle part me revient en pourcentage ?","Qu'est-ce qui relevait d'autres personnes, du contexte, du hasard ?","Pouvais-je raisonnablement le savoir à l'avance ?"]},
+  filtre_negatif:{nom:"Filtre négatif",
+    tell:"Un détail négatif efface tout le reste.",
+    def:"Votre attention se fixe sur l'élément défavorable et les éléments neutres ou positifs ne sont pas comptabilisés.",
+    ex:"« Neuf retours positifs et une critique : la réunion a été un désastre. »",
+    impact:"Le bilan est faussé à la source, donc les preuves qui contrediraient la pensée n'arrivent jamais jusqu'à vous. À force, le sentiment de ne jamais être à la hauteur devient cohérent avec ce que vous observez.",
+    q:["Qu'est-ce que je n'ai pas compté ?","Si je notais tous les retours, quel serait le ratio réel ?","Est-ce que j'applique le même filtre aux autres ?"]},
+  raisonnement_emotionnel:{nom:"Raisonnement émotionnel",
+    tell:"Je le ressens, donc c'est vrai.",
+    def:"L'intensité d'une émotion est prise pour la preuve de ce qu'elle suggère : se sentir en danger devient être en danger.",
+    ex:"« Je me sens ridicule, donc j'ai été ridicule. »",
+    impact:"L'émotion se pose en preuve, et la vérification devient superflue. C'est particulièrement tenace dans l'anxiété : la peur elle-même est lue comme le signal qu'il y avait bien une menace.",
+    q:["En dehors de ce que je ressens, quel fait vérifiable soutient cette pensée ?","M'est-il déjà arrivé de ressentir ça très fort alors que c'était faux ?","Qu'aurait enregistré une caméra dans la pièce ?"]},
+  exigences:{nom:"Il faut / je dois",
+    tell:"Des règles absolues, sur vous ou sur les autres.",
+    def:"Vous fonctionnez avec des exigences rigides, formulées comme des obligations non négociables plutôt que comme des préférences.",
+    ex:"« Je dois toujours rester disponible. »",
+    impact:"Tournée vers vous, la règle produit de la culpabilité dès que vous ne l'atteignez pas. Tournée vers les autres, elle produit de l'irritation quand ils ne s'y plient pas. La barre ne bouge jamais.",
+    q:["Qui a fixé cette règle, et est-ce que je l'appliquerais à quelqu'un d'autre ?","Que se passe-t-il concrètement si je ne la respecte pas cette fois ?","Si je reformule en « je préférerais », qu'est-ce que ça change ?"]}},
+
+exemples:[
+  {date:"2026-07-29",
+   situation:"Samedi matin, Léa m'a demandé de la dépanner pour son déménagement. J'avais déjà prévu de travailler.",
+   emotions:["culpabilite","anxiete"], intensite:65, intensiteApres:30,
+   pensee:"Si je dis non, ils ne me proposeront plus rien.",
+   distorsions:["catastrophisme","lecture_pensee"],
+   pour:"J'ai refusé une soirée en mai, on ne m'a pas relancé le mois suivant.",
+   contre:"Léa m'a réinvité deux fois depuis. Refuser une fois n'a jamais coupé une amitié.",
+   alternative:"Refuser une demande ponctuelle déçoit sur le moment, ça ne supprime pas la relation.",
+   croyance:75, croyanceApres:35, reeval:[{date:"2026-08-01", croyance:25}]},
+  {date:"2026-07-24",
+   situation:"Message envoyé au groupe à 18 h. Aucune réponse à 22 h alors que trois personnes étaient en ligne.",
+   emotions:["tristesse","honte"], intensite:80, intensiteApres:35,
+   pensee:"Personne ne m'a répondu, tout le monde m'évite.",
+   distorsions:["generalisation","personnalisation","filtre_negatif"],
+   pour:"Quatre heures sans réponse. Deux personnes ont posté ailleurs entre-temps.",
+   contre:"Le groupe met souvent une journée à réagir. Marc a répondu le lendemain matin sans que je relance.",
+   alternative:"Un message sans réponse immédiate un mercredi soir dit surtout que les gens sont occupés.",
+   croyance:90, croyanceApres:30, reeval:[]}]
+},
+
+en:{
+ui:{
+  appName:"Thought Record", appSub:"Cognitive restructuring", journal:"Journal",
+  heroTitre:"Catching the sentence you never hear yourself say",
+  heroLede:"When an emotion spikes, a sentence came first. It goes by so fast that all you feel is its effect.",
+
+  s1Titre:"Try it", s1Intro:"One scene, two possible sentences. Tap one, then the other.",
+  s1Situation:"You text a friend. Three hours later, still no reply.",
+  s1LectureA:"\u201cHe's ignoring me.\u201d", s1LectureB:"\u201cHe must be busy.\u201d",
+  s1Caption:"Same fact, same person, same day. What changes between the two is one sentence.",
+  rEmotion:"Emotion", rReaction:"Reaction", rSuite:"What follows",
+
+  s2Titre:"The model",
+  s2Intro:"It isn't the situation that triggers the emotion, it's the interpretation you place on it. This idea, set out by psychiatrist <strong>Aaron Beck</strong> in the 1960s, is the foundation of cognitive behavioural therapy.",
+  s2Alt:"Diagram: the situation leads to an automatic thought, which leads to an emotion, then to a behaviour, which feeds back into the situation.",
+  s2Caption:"The loop sustains itself: avoiding brings relief in the moment, and confirms the fear.",
+  s2Apres:"The automatic thought is the only link you can act on directly. You don't choose what happens to you, or what you feel. You can examine what you tell yourself.",
+  nSituation:"Situation", nPensee:"Automatic thought", nAgit:"WHERE THE RECORD ACTS",
+  nEmotion:"Emotion and sensations", nComportement:"Behaviour",
+
+  s3Titre:"One record, seven steps", s3Intro:"Every record follows the same order. Walk through a complete example.",
+  s3Caption:"The order isn't decorative: looking for another reading before listing the facts only produces positive thinking, which doesn't hold.",
+  colonne:"COLUMN",
+
+  s4Titre:"What the research says",
+  s4Repli:"Why write rather than ruminate?",
+  s4ReplA:"As long as it stays in your head, a thought is experienced as self-evident: it merges with reality. Written down, it becomes a sentence — a dated object you can reread and dispute.",
+  s4ReplB:"This slight gap between you and your thought is considered one of the active ingredients of the exercise. It is also why filling in a record in your head doesn't produce the same effect.",
+
+  s5Titre:"Why this app exists",
+  s5Intro:"There are already plenty of wellbeing apps. This one came out of a few deliberate choices.",
+  s5MotA:"This app was written for me first. I wanted to understand cognitive restructuring from the inside, and the only honest way to find out was to put myself through it, then build the tool I would have wanted at hand.",
+  s5MotB:"So it isn't a product designed for you. It's a notebook made public. Take what serves you, and nothing more.",
+  s5Sign:"The author",
+
+  s6Titre:"What this app is not", limites:"Limits",
+  s6A:"Neither a diagnosis, nor a treatment, nor a professional. It is not suited to trauma work, nor to periods when you are genuinely unwell: those situations call for someone in the room.",
+  s6B:"If filling in a record consistently leaves you worse off than before, it isn't the right tool at the right time.",
+  s6C:"<strong>In a crisis: 3114</strong> (France), free, 24/7 — or your local crisis line.",
+  safety:"This app is not care. In a crisis: <a href=\"#\">3114</a> (France) or your local crisis line.",
+
+  vosFiches:"Your records",
+  journalHint:"One record per situation that set off a strong emotion. Seven steps, five minutes.",
+  vide:"No records yet.<br>Next time an emotion spikes, open one.",
+  comprendre:"How it works →",
+
+  commencer:"Get started", retourJournal:"Back to journal", nouvelleFiche:"New record",
+  precedent:"Previous", suivant:"Next", revenirDebut:"Back to the start",
+  continuer:"Continue", retour:"Back", annuler:"Cancel", fermer:"Close",
+  voirBilan:"See the summary", enregistrer:"Save record", fermerSansEnreg:"Close without saving",
+
+  intensite:"Intensity", jycrois:"I believe it", jycroisMaintenant:"I believe it now",
+  intensiteMaintenant:"Intensity now",
+  bilan:"Summary", ceQuiABouge:"What shifted", ficheDu:"Record of",
+  relireAFroid:"Reread in the cold light of day", etAujourdhui:"And today?",
+  jycroyais:"I believed it", apresLaFiche:"After the record", aujourdhui:"Today",
+  relectures:"Re-ratings", finFiche:"End of record", reevaluer:"Re-rate today",
+  reevalQ:"How true does this sentence feel to you now?",
+  sansIntitule:"Untitled", aucuneIdentifiee:"None identified",
+
+  lSituation:"Situation", lEmotion:"Emotion", lPensee:"Automatic thought",
+  lDistorsions:"Distortions", lPour:"Evidence for", lContre:"Evidence against",
+  lAlternative:"Alternative thought",
+
+  aideTitre:"Questions from your distortions",
+  aideVide:"No distortion ticked at step 4: go back if you want targeted questions.",
+  shEyebrow:"Cognitive distortion", shQuoi:"What it is", shCout:"What it costs",
+  shComment:"How to undo it", shCocher:"That's it — tick it", shRetirer:"Remove from my record",
+  comprendreLabel:"Understand:"
+},
+
+emotions:{anxiete:"Anxiety",tristesse:"Sadness",colere:"Anger",honte:"Shame",
+  culpabilite:"Guilt",peur:"Fear",decouragement:"Discouragement"},
+
+lectures:{
+  a:{emotion:"Anxiety, shame", niveau:75,
+     compo:"I reread my messages looking for what might have upset him. I don't dare follow up.",
+     suite:"The silence drags on, so the interpretation gets confirmed. I pull back a little."},
+  b:{emotion:"Mild irritation", niveau:20,
+     compo:"I move on. I'll follow up tomorrow if need be.",
+     suite:"He replies the next morning. The episode leaves nothing behind."}},
+
+facts:[
+  {t:"CBT is one of the most studied psychotherapies.", d:"Its effectiveness for depression and anxiety disorders rests on hundreds of controlled trials."},
+  {t:"On your own, it works less well than with support.", d:"The benefit is real, but markedly larger when a professional follows along, even at a distance."},
+  {t:"It's training, not revelation.", d:"The effect comes from repetition. The first records are laborious, and that's normal."}],
+
+choix:[
+  {ic:"carnet", t:"A notebook, not a coach.", d:"The app asks the questions, you write the answers. A thought reworded by someone else — or by a machine — dislodges nothing: the work is putting it into your own words."},
+  {ic:"bellOff", t:"No notifications, no streaks.", d:"You fill in a record when an emotion spikes, not because a badge demands it. Engagement mechanics would turn introspection into a daily chore."},
+  {ic:"history", t:"Nothing is ever rewritten.", d:"An old record stays exactly as you filled it in. You can re-rate today what you believed yesterday, never correct it — otherwise the distance travelled disappears."},
+  {ic:"lock", t:"Your records never leave your phone.", d:"What gets written here is as private as it gets. No account, no server, no usage analytics."},
+  {ic:"eye", t:"What it can't do is written down too.", d:"A self-therapy app that promises to cure is lying. Its limits sit on the same page as its promises."}],
+
+tour:[
+  {n:"Situation", def:"The observable facts, without interpretation. What a camera would have filmed.",
+   ex:"2 p.m. meeting. My manager cuts off my presentation after two minutes."},
+  {n:"Emotion", def:"What you feel, and its intensity from 0 to 100. Naming an emotion already draws its outline.",
+   ex:"Shame, anxiety — <span class=\"num\">70 / 100</span>"},
+  {n:"Automatic thought", def:"The exact sentence that crossed your mind, and how far you believe it in the moment.",
+   ex:"<em>\u201cHe thinks I'm incompetent.\u201d</em><br>I believe it <span class=\"num\">85 %</span>"},
+  {n:"Distortion", def:"The mechanism that bends the thought. Eight are catalogued in the app, with the questions that undo them.",
+   ex:"Mind reading · Catastrophizing"},
+  {n:"Evidence for", def:"The proof that supports the thought. You start here, honestly, otherwise the exercise is just self-persuasion.",
+   ex:"He interrupted me. He looked at his phone twice."},
+  {n:"Evidence against", def:"The facts that contradict it. The hardest step, and the one that does the work.",
+   ex:"He interrupts everyone. He handed me the client account last month."},
+  {n:"Alternative thought", def:"A fairer version — neither positive nor reassuring. Then you re-rate in the cold light of day.",
+   ex:"<em>\u201cHe manages meeting time badly. That says nothing about my work.\u201d</em>", fin:true}],
+
+steps:[
+  {ey:"Column 1 · Facts", q:"What happened?", h:"Observable facts only: where, when, with whom. No interpretation yet.",
+   ph:"2 p.m. meeting. My manager cut off my presentation after two minutes."},
+  {ey:"Column 2 · Emotion", q:"What did you feel?", h:"Pick what dominates, then place the intensity at its peak."},
+  {ey:"Column 3 · Automatic thought", q:"What sentence crossed your mind?", h:"Its exact wording, in the present tense, as it arrived.",
+   ph:"He thinks I'm incompetent, I'll end up being sidelined."},
+  {ey:"Column 4 · Distortion", q:"What does this thought look like?", h:"Naming the mechanism helps you step back from it. Tap \u201c?\u201d to understand each one."},
+  {ey:"Column 5 · Evidence for", q:"What supports this thought?", h:"Proof, not impressions. What an outside observer could have noted.",
+   ph:"He interrupted me. He looked at his phone twice."},
+  {ey:"Column 6 · Evidence against", q:"And what contradicts it?", h:"The hardest, and the most useful. The questions below come from the distortions you ticked.",
+   ph:"He interrupts everyone. He handed me the client account last month."},
+  {ey:"Column 7 · Alternative thought", q:"Which version holds up better?", h:"Neither positive nor reassuring: fairer. Then re-rate in the cold light of day.",
+   ph:"He manages meeting time badly. That says nothing about the value of my work."}],
+
+dist:{
+  catastrophisme:{nom:"Catastrophizing",
+    tell:"The worst case is treated as the likely case.",
+    def:"You start from an uncertain fact and run the chain out to the gravest outcome, then reason as though that outcome were settled.",
+    ex:"\u201cHe took my remark badly → he'll hold it against me → I'll be dropped from the project.\u201d",
+    impact:"The body doesn't distinguish an imagined danger from a real one: the alarm fires at full strength for something that hasn't happened. And since fear drives avoidance, you never test whether the scenario held up.",
+    q:["What is the worst case, the best case, and the most likely one?","Of the times I've had this fear, how many came true?","If the worst did happen, what would I actually do?"]},
+  tout_ou_rien:{nom:"All-or-nothing thinking",
+    tell:"Two boxes only: success or failure.",
+    def:"You judge in absolute categories, with no middle ground. Anything short of the standard falls automatically on the failure side.",
+    ex:"\u201cI stumbled over my words, my presentation was terrible.\u201d",
+    impact:"A decent performance is filed as a failure, so effort is never rewarded. This is the engine of perfectionism, and often of giving up.",
+    q:["On a scale of 0 to 100, where does this actually sit?","Which parts worked, even partly?","What would I say to a colleague who showed me this result?"]},
+  lecture_pensee:{nom:"Mind reading",
+    tell:"You know what they think, without having asked.",
+    def:"You attribute an opinion or intention to someone on the basis of a slight cue, and treat it as established fact.",
+    ex:"\u201cShe replied briefly, she finds me tiresome.\u201d",
+    impact:"You react to a hypothesis as though it were a fact. The costliest part is the loop: you pull back to protect yourself, they read the coolness and pull back in turn.",
+    q:["What observable evidence do I have of what she thinks?","What other reasons could explain her behaviour?","What stops me from simply asking her?"]},
+  generalisation:{nom:"Overgeneralization",
+    tell:"Always, never, nobody, everyone.",
+    def:"A single event becomes a permanent rule, applied to the past as much as the future.",
+    ex:"\u201cThat interview went badly, I'll never find a job.\u201d",
+    impact:"One incident repaints your whole history. Because the rule presents itself as final, it makes action pointless: why try again if it never works?",
+    q:["How many times exactly has this happened?","Can I name at least one counter-example?","If I swap \u201cnever\u201d for \u201cthis time\u201d, does the sentence still hold?"]},
+  personnalisation:{nom:"Personalization",
+    tell:"You are the cause, even when you're one factor among many.",
+    def:"You take responsibility for an event produced by a set of causes, many of which were beyond you.",
+    ex:"\u201cThe project slipped, it's my fault.\u201d",
+    impact:"You carry guilt sized for a responsibility you don't have. And because the supposed cause is you, the supposed fix is you too: you wear yourself out correcting what never depended on you.",
+    q:["If I list every cause, what share is mine as a percentage?","What came down to other people, the context, plain chance?","Could I reasonably have known in advance?"]},
+  filtre_negatif:{nom:"Mental filter",
+    tell:"One negative detail wipes out the rest.",
+    def:"Your attention locks onto the unfavourable element, and neutral or positive elements go uncounted.",
+    ex:"\u201cNine positive comments and one criticism: the meeting was a disaster.\u201d",
+    impact:"The tally is skewed at source, so evidence that would contradict the thought never reaches you. Over time, feeling never good enough becomes consistent with what you observe.",
+    q:["What have I not counted?","If I noted every piece of feedback, what would the real ratio be?","Do I apply the same filter to other people?"]},
+  raisonnement_emotionnel:{nom:"Emotional reasoning",
+    tell:"I feel it, therefore it's true.",
+    def:"The intensity of an emotion is taken as proof of what it suggests: feeling in danger becomes being in danger.",
+    ex:"\u201cI feel ridiculous, so I was ridiculous.\u201d",
+    impact:"The emotion sets itself up as evidence, and checking becomes redundant. This is especially stubborn in anxiety: the fear itself is read as the signal that a threat was real.",
+    q:["Beyond what I feel, what verifiable fact supports this thought?","Have I ever felt this strongly when it turned out to be false?","What would a camera in the room have recorded?"]},
+  exigences:{nom:"Should statements",
+    tell:"Absolute rules, about you or about others.",
+    def:"You operate on rigid demands, framed as non-negotiable obligations rather than preferences.",
+    ex:"\u201cI must always stay available.\u201d",
+    impact:"Turned inward, the rule produces guilt the moment you fall short. Turned outward, it produces irritation when others don't comply. The bar never moves.",
+    q:["Who set this rule, and would I apply it to anyone else?","What actually happens if I don't meet it this time?","If I reframe it as \u201cI'd prefer to\u201d, what changes?"]}},
+
+exemples:[
+  {date:"2026-07-29",
+   situation:"Saturday morning, Léa asked me to help with her move. I'd already planned to work.",
+   emotions:["culpabilite","anxiete"], intensite:65, intensiteApres:30,
+   pensee:"If I say no, they'll stop asking me to anything.",
+   distorsions:["catastrophisme","lecture_pensee"],
+   pour:"I turned down an evening in May, and nobody chased me the following month.",
+   contre:"Léa has invited me twice since. Saying no once has never ended a friendship.",
+   alternative:"Turning down a one-off request disappoints in the moment; it doesn't delete the relationship.",
+   croyance:75, croyanceApres:35, reeval:[{date:"2026-08-01", croyance:25}]},
+  {date:"2026-07-24",
+   situation:"Message sent to the group at 6 p.m. No reply by 10 p.m. even though three people were online.",
+   emotions:["tristesse","honte"], intensite:80, intensiteApres:35,
+   pensee:"Nobody replied, everyone is avoiding me.",
+   distorsions:["generalisation","personnalisation","filtre_negatif"],
+   pour:"Four hours with no reply. Two people posted elsewhere in the meantime.",
+   contre:"The group often takes a day to react. Marc replied the next morning without me chasing.",
+   alternative:"A message left unanswered on a Wednesday evening mostly means people are busy.",
+   croyance:90, croyanceApres:30, reeval:[]}]
+}
+};
+
+/* ---------- Langue active ---------- */
+/* Pas de persistance ici : les artefacts n'ont pas de stockage.
+   Dans la vraie app, ce choix va en préférences. */
+let lang = (typeof navigator !== "undefined" && /^en/i.test(navigator.language || "")) ? "en" : "fr";
+const L = () => I18N[lang];
+const t = k => L().ui[k] || k;
+
+const $ = id => document.getElementById(id);
+const esc = s => (s || "").replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+const slug = s => s.normalize("NFD").replace(/[^\w]/g, "");
+const DIST = () => L().dist;
+const IDS  = () => Object.keys(L().dist);
+const nomD = id => (L().dist[id] || {}).nom || id;
+const nomE = id => L().emotions[id] || id;
+const fmtDate = iso => new Date(iso + "T12:00:00")
+  .toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", {day:"numeric", month:"short"});
+
+const ICODIST = {catastrophisme:"down", tout_ou_rien:"half", lecture_pensee:"telepathy",
+  generalisation:"expand", personnalisation:"target", filtre_negatif:"funnel",
+  raisonnement_emotionnel:"heart", exigences:"rule"};
+const ICOCOL = ["frame","wave","bubble","warp","balanceL","balanceR","branch"];
+
+/* ---------- Icônes ---------- */
+const ICO = {
+  frame:["M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8","M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8","M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16","M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"],
+  wave:["M3 12h3.5l2.5-6 4 12 2.5-6H21"],
+  bubble:["M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4V6Z"],
+  warp:["M3 16c3 0 3-8 6-8s3 8 6 8 3-8 6-8"],
+  balanceL:["M4 9.5l16-3","M12 8V20","M8.5 20h7","M4 9.5v2.5","M20 6.5v2.5"],
+  balanceR:["M4 6.5l16 3","M12 8V20","M8.5 20h7","M4 6.5v2.5","M20 9.5v2.5"],
+  branch:["M7 4v7a3 3 0 0 0 3 3h7","M14.5 11l3 3-3 3"],
+  down:["M12 4v14","M6 13l6 6 6-6"],
+  half:["M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 1 0 0-17Z","M12 3.5v17"],
+  telepathy:["M11 12a3.5 3.5 0 1 0-7 0 3.5 3.5 0 1 0 7 0Z","M14 9a4 4 0 0 1 0 6","M17 6.5a8 8 0 0 1 0 11"],
+  expand:["M8 4H4v4","M16 4h4v4","M8 20H4v-4","M16 20h4v-4"],
+  target:["M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16Z","M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 1 0 0-7Z"],
+  funnel:["M4 5h16l-6 7v7l-4-2v-5L4 5Z"],
+  heart:["M12 20s-7-4.4-7-9a3.8 3.8 0 0 1 7-2.3A3.8 3.8 0 0 1 19 11c0 4.6-7 9-7 9Z"],
+  rule:["M5.5 4h13a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4Z","M12 8v5","M12 16.2v.3"],
+  carnet:["M7 4h11v16H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z","M9 4v16"],
+  bellOff:["M6.5 16V10a5.5 5.5 0 0 1 9-4.2","M17.5 11v5","M4.5 16h15","M10 19.5a2 2 0 0 0 4 0","M4 4l16 16"],
+  history:["M12 4a8 8 0 1 1-8 8","M4 8.5V12h3.5","M12 8v4.5l3 2"],
+  lock:["M7.5 10V8a4.5 4.5 0 0 1 9 0v2","M7.5 10h9A1.5 1.5 0 0 1 18 11.5v6.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 18v-6.5A1.5 1.5 0 0 1 7.5 10Z","M12 14v2"],
+  eye:["M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z","M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6Z"],
+  check:["M4.5 12.5l5 5 10-11"],
+  alert:["M12 4 2.5 20.5h19Z","M12 10v4","M12 17.2v.3"]
+};
+function ico(n, cls){
+  return `<svg class="ic ${cls || "ic-n"}" viewBox="0 0 24 24" aria-hidden="true">${
+    (ICO[n] || []).map(dd => `<path d="${dd}"/>`).join("")}</svg>`;
+}
+
+/* ---------- Application de la langue au HTML statique ---------- */
+function applyStatic(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-ico]").forEach(el => { el.outerHTML = ico(el.dataset.ico, el.dataset.cls); });
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll("[data-th]").forEach(el => { el.innerHTML = t(el.dataset.th); });
+  document.querySelectorAll("[data-alt]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.alt)); });
+  $("lg-fr").classList.toggle("on", lang === "fr");
+  $("lg-en").classList.toggle("on", lang === "en");
+
+  $("facts").innerHTML = L().facts.map(f =>
+    `<li>${ico("check","ic-a")}<div><strong>${f.t}</strong> ${f.d}</div></li>`).join("");
+  $("choix").innerHTML = L().choix.map(c =>
+    `<li>${ico(c.ic,"ic-n")}<div><strong>${c.t}</strong><span>${c.d}</span></div></li>`).join("");
+}
+
+function setLang(l){
+  if(l === lang) return;
+  lang = l;
+  applyStatic();
+  if(!$("sheet").hidden && ouvertD) openSheet(ouvertD);
+  refresh();
+}
+
+/* ---------- État ---------- */
+/* Les fiches créées par la personne ne sont jamais traduites : ce sont ses mots.
+   Seuls les exemples de démonstration suivent la langue. */
+let mesFiches = [];
+const fiches = () => [...mesFiches, ...L().exemples];
+let d = {};
+let ecran = "intro";
+
+function neuf(){
+  return {emotions:[], distorsions:[], intensite:70, croyance:80, croyanceApres:40, intensiteApres:30};
+}
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+  $(id).scrollTop = 0;
+}
+function refresh(){
+  ({intro, home, step, done, detail:() => detail(ouverte)}[ecran] || home)();
+}
+
+/* ---------- Comprendre ---------- */
+function demo(k){
+  const x = L().lectures[k];
+  $("dm-a").classList.toggle("on", k === "a");
+  $("dm-b").classList.toggle("on", k === "b");
+  choixLecture = k;
+  $("dm-out").innerHTML = `
+    <div class="demo-row"><b>${t("rEmotion")}</b><span>${x.emotion}
+      <div class="emobar"><i style="width:${x.niveau}%"></i></div></span></div>
+    <div class="demo-row"><b>${t("rReaction")}</b><span>${x.compo}</span></div>
+    <div class="demo-row"><b>${t("rSuite")}</b><span>${x.suite}</span></div>`;
+}
+let choixLecture = "a";
+
+let ti = 0;
+function tour(k){
+  const T = L().tour;
+  ti = (k + T.length) % T.length;
+  const x = T[ti];
+  $("st-dots").innerHTML = T.map((s,j) =>
+    `<button class="${j === ti ? "on" : ""}" onclick="tour(${j})" aria-label="${t("colonne")} ${j+1}"></button>`).join("");
+  $("st-body").innerHTML = `
+    <div class="st-num">${t("colonne")} ${String(ti+1).padStart(2,"0")} / 07</div>
+    <div class="st-name">${ico(ICOCOL[ti], ti < 4 ? "ic-t" : "ic-a")}<span>${x.n}</span></div>
+    <p class="st-def">${x.def}</p>
+    <div class="st-ex">${x.ex}${x.fin ? `
+      <div class="mini">
+        <div class="track t-av"><b style="width:85%"></b></div>
+        <span class="arrow">85 → 40</span>
+        <div class="track t-ap"><b style="width:40%"></b></div>
+      </div>` : ""}</div>`;
+  $("st-next").textContent = ti === T.length - 1 ? t("revenirDebut") : t("suivant");
+}
+
+let introVu = false;
+function intro(){
+  ecran = "intro";
+  demo(choixLecture); tour(ti);
+  $("foot").innerHTML = introVu
+    ? `<button class="btn ghost" onclick="home()">${t("retourJournal")}</button>`
+    : `<button class="btn" onclick="introVu=true;home()">${t("commencer")}</button>`;
+  show("s-intro");
+}
+
+/* ---------- Journal ---------- */
+function home(){
+  ecran = "home";
+  const F = fiches();
+  $("list").innerHTML = F.map((e,k) => {
+    const ap = actuel(e);
+    return `
+    <div class="card" tabindex="0" role="button" onclick="detail(${k})"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();detail(${k})}">
+      <div class="card-date">${fmtDate(e.date)}</div>
+      <div class="card-thought">« ${esc(e.pensee)} »</div>
+      <div class="minidelta">
+        <div class="track t-av"><b style="width:${e.croyance}%"></b></div>
+        <span class="arrow">${e.croyance} → ${ap}</span>
+        <div class="track t-ap"><b style="width:${ap}%"></b></div>
+      </div>
+    </div>`; }).join("") || `<div class="empty">${t("vide")}</div>`;
+  $("foot").innerHTML = `<button class="btn" onclick="start()">${t("nouvelleFiche")}</button>`;
+  show("s-home");
+}
+
+/* ---------- Parcours ---------- */
+let i = 0;
+const TYPES = ["text","emotions","belief","distorsions","text","text","revalue"];
+const CLES  = ["situation","emotions","pensee","distorsions","pour","contre","alternative"];
+const AIDE  = [false,false,false,false,false,true,true];
+
+function start(){ i = 0; d = neuf(); step(); }
+
+function step(){
+  ecran = "step";
+  const s = L().steps[i], type = TYPES[i], cle = CLES[i];
+  $("bar").innerHTML = L().steps.map((_,k) =>
+    `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("") +
+    `<span class="stepcount">${i+1}/7</span>`;
+  $("ey").innerHTML = ico(ICOCOL[i], i < 4 ? "ic-t" : "ic-a") + `<span>${s.ey}</span>`;
+  $("q").textContent = s.q;
+  $("h").textContent = s.h;
+
+  let f = "";
+  if(type === "text" || type === "belief" || type === "revalue")
+    f += `<textarea id="in" rows="${type === "text" ? 5 : 4}" placeholder="${s.ph || ""}">${esc(d[cle] || "")}</textarea>`;
+
+  if(type === "emotions")
+    f += `<div class="chips">${Object.keys(L().emotions).map(id =>
+      `<button class="chip ${d.emotions.includes(id) ? "on" : ""}" onclick="tog('emotions','${id}',this)">${nomE(id)}</button>`).join("")}</div>`
+      + gauge(t("intensite"), "intensite", d.intensite);
+
+  if(type === "distorsions")
+    f += IDS().map(id => `
+      <div class="drow ${d.distorsions.includes(id) ? "on" : ""}" id="row-${id}">
+        <div class="dbox"></div>
+        <button class="dsel" onclick="togDist('${id}')" aria-pressed="${d.distorsions.includes(id)}">
+          <div class="dname">${ico(ICODIST[id],"ic-t")}<span>${nomD(id)}</span></div>
+          <div class="dtell">${DIST()[id].tell}</div>
+        </button>
+        <button class="dinfo" onclick="openSheet('${id}')" aria-label="${t("comprendreLabel")} ${nomD(id)}">?</button>
+      </div>`).join("");
+
+  if(type === "belief") f += gauge(t("jycrois"), "croyance", d.croyance);
+  if(type === "revalue"){
+    f += gauge(t("jycroisMaintenant"), "croyanceApres", d.croyanceApres, true);
+    f += gauge(t("intensiteMaintenant"), "intensiteApres", d.intensiteApres, true);
+  }
+  if(AIDE[i]) f += aide();
+  $("field").innerHTML = f;
+
+  $("foot").innerHTML = `
+    <div class="row">
+      <button class="back" onclick="prev()">${i === 0 ? t("annuler") : t("retour")}</button>
+      <button class="btn" onclick="next()">${i === 6 ? t("voirBilan") : t("continuer")}</button>
+    </div>`;
+  show("s-step");
+}
+
+function gauge(label, key, val, calme){
+  return `<div class="gauge">
+    <div class="gauge-head"><span>${label}</span><span class="gauge-val" id="v-${key}">${val} %</span></div>
+    <input type="range" min="0" max="100" step="5" value="${val}" class="${calme ? "calme" : ""}"
+      oninput="setv('${key}',this.value)" aria-label="${label}">
+    <div class="ticks"><span>0</span><span>50</span><span>100</span></div>
+  </div>`;
+}
+function setv(k,v){ d[k] = +v; $("v-"+k).textContent = v + " %"; }
+function tog(k,o,el){
+  const a = d[k], j = a.indexOf(o);
+  j < 0 ? a.push(o) : a.splice(j,1);
+  el.classList.toggle("on");
+}
+function togDist(id){
+  const a = d.distorsions, j = a.indexOf(id);
+  j < 0 ? a.push(id) : a.splice(j,1);
+  const row = $("row-"+id);
+  if(row){
+    row.classList.toggle("on", j < 0);
+    row.querySelector(".dsel").setAttribute("aria-pressed", j < 0);
+  }
+}
+function aide(){
+  if(!d.distorsions.length)
+    return `<div class="aide"><p>${t("aideTitre")}</p><ul style="margin-top:9px"><li>${t("aideVide")}</li></ul></div>`;
+  return `<div class="aide"><p>${t("aideTitre")}</p>${d.distorsions.map(id =>
+    `<h4>${ico(ICODIST[id],"ic-t")}<span>${nomD(id)}</span></h4>
+     <ul>${DIST()[id].q.map(x => `<li>${x}</li>`).join("")}</ul>`).join("")}</div>`;
+}
+function save(){
+  if(!["text","belief","revalue"].includes(TYPES[i])) return;
+  const el = $("in");
+  if(el) d[CLES[i]] = el.value;
+}
+function next(){ save(); i < 6 ? (i++, step()) : done(); }
+function prev(){ save(); i === 0 ? home() : (i--, step()); }
+
+/* ---------- Fiche explicative ---------- */
+let ouvertD = null;
+function openSheet(id){
+  ouvertD = id;
+  const x = DIST()[id];
+  $("sheet-body").innerHTML = `
+    <div class="eyebrow">${t("shEyebrow")}</div>
+    <h2 id="sh-title">${ico(ICODIST[id],"ic-t ic-lg")}<span>${x.nom}</span></h2>
+    <div class="quote">${x.ex}</div>
+    <section><p>${t("shQuoi")}</p><div>${x.def}</div></section>
+    <section><p>${t("shCout")}</p><div>${x.impact}</div></section>
+    <section><p>${t("shComment")}</p><ul>${x.q.map(q => `<li>${q}</li>`).join("")}</ul></section>
+    <div style="height:18px"></div>
+    <button class="btn" onclick="fromSheet('${id}')">${
+      d.distorsions && d.distorsions.includes(id) ? t("shRetirer") : t("shCocher")}</button>
+    <button class="btn ghost" onclick="closeSheet()">${t("fermer")}</button>`;
+  const w = $("sheet");
+  w.hidden = false;
+  requestAnimationFrame(() => w.classList.add("open"));
+}
+function closeSheet(){
+  const w = $("sheet");
+  w.classList.remove("open");
+  setTimeout(() => { w.hidden = true; }, 300);
+}
+function fromSheet(id){
+  togDist(id);
+  closeSheet();
+  if(ecran === "step" && TYPES[i] === "distorsions") step();
+}
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+
+/* ---------- Bilan et détail ---------- */
+const actuel = r => r.reeval && r.reeval.length ? r.reeval[r.reeval.length-1].croyance : r.croyanceApres;
+
+function renderRecord(r){
+  const av = r.croyance, ap = actuel(r), W = 300;
+  const wA = Math.max(10, av/100*W), wB = Math.max(10, ap/100*W);
+  $("barAv").setAttribute("width", wA);
+  $("barAp").setAttribute("width", wB);
+  $("slope").setAttribute("d", `M0,10 L${wA},10 L${wB},82 L0,82 Z`);
+  $("b-avlbl").textContent = t("jycroyais");
+  $("b-av").textContent = av + " %";
+  $("b-ap").textContent = ap + " %";
+
+  const re = r.reeval || [];
+  $("b-aplbl").textContent = re.length ? t("aujourdhui") : t("apresLaFiche");
+  $("serie").innerHTML = re.length ? `<div class="serie"><p>${t("relectures")}</p>
+    <div><span>${t("finFiche")}</span><span class="num">${r.croyanceApres} %</span></div>
+    ${re.map(x => `<div><span>${fmtDate(x.date)}</span><span class="num">${x.croyance} %</span></div>`).join("")}
+    </div>` : "";
+
+  const line = (k,v) => `<dt>${t(k)}</dt><dd>${v}</dd>`;
+  $("recap").innerHTML =
+    line("lSituation", esc(r.situation) || "—") +
+    line("lEmotion", (r.emotions.map(nomE).join(" · ") || "—") +
+      ` <span class="num">${r.intensite} → ${r.intensiteApres} %</span>`) +
+    line("lPensee", `<em>« ${esc(r.pensee) || "—"} »</em>`) +
+    line("lDistorsions", r.distorsions.length
+      ? r.distorsions.map(id => `<button class="glossref" onclick="openSheet('${id}')">${nomD(id)}</button>`).join(" · ")
+      : t("aucuneIdentifiee")) +
+    line("lPour", esc(r.pour) || "—") +
+    line("lContre", esc(r.contre) || "—") +
+    line("lAlternative", `<em>« ${esc(r.alternative) || "—"} »</em>`);
+  show("s-done");
+}
+
+function done(){
+  ecran = "done";
+  $("d-ey").textContent = t("bilan");
+  $("d-title").textContent = t("ceQuiABouge");
+  renderRecord(d);
+  $("foot").innerHTML = `<button class="btn" onclick="commit()">${t("enregistrer")}</button>
+    <button class="btn ghost" onclick="home()">${t("fermerSansEnreg")}</button>`;
+}
+function commit(){
+  d.date = new Date().toISOString().slice(0,10);
+  d.reeval = [];
+  d.pensee = d.pensee || t("sansIntitule");
+  mesFiches.unshift(d);
+  home();
+}
+
+let ouverte = 0;
+function detail(k){
+  ecran = "detail"; ouverte = k;
+  const r = fiches()[k];
+  $("d-ey").textContent = `${t("ficheDu")} ${fmtDate(r.date)}`;
+  $("d-title").textContent = t("relireAFroid");
+  renderRecord(r);
+  $("foot").innerHTML = `
+    <div class="row">
+      <button class="back" onclick="home()">${t("retour")}</button>
+      <button class="btn" onclick="reeval()">${t("reevaluer")}</button>
+    </div>`;
+}
+
+function reeval(){
+  const r = fiches()[ouverte];
+  $("d-title").textContent = t("etAujourdhui");
+  $("recap").innerHTML = `<dt>${t("lPensee")}</dt><dd><em>« ${esc(r.pensee)} »</em></dd>
+    <dd style="color:var(--encre-2);font-size:13.5px">${t("reevalQ")}</dd>`;
+  $("serie").innerHTML = gauge(t("jycrois"), "tmp", actuel(r), true);
+  d.tmp = actuel(r);
+  $("foot").innerHTML = `
+    <div class="row">
+      <button class="back" onclick="detail(ouverte)">${t("annuler")}</button>
+      <button class="btn" onclick="commitReeval()">${t("enregistrer")}</button>
+    </div>`;
+}
+function commitReeval(){
+  fiches()[ouverte].reeval.push({date:new Date().toISOString().slice(0,10), croyance:d.tmp});
+  detail(ouverte);
+}
+
+/* ---------- Démarrage ---------- */
+d = neuf();
+applyStatic();
+intro();
+</script>
+</body>
+</html>

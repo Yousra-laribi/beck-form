@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Runs the full check before every commit. Without this, the rules in CLAUDE.md
+# are wishful thinking.
+#
+# Enabled with:  npm run hooks:install   (sets core.hooksPath to .githooks)
+# Emergency bypass is `git commit --no-verify` — if you reach for it, say so in
+# the commit message, so the next person knows the gate was open.
+
+set -e
+
+echo "pre-commit → npm run check"
+npm run check
