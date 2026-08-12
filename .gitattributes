@@ -1,0 +1,11 @@
+# Normalise line endings so the repo behaves the same on Windows (dev) and
+# Linux (CI). Without this, a CRLF checkout of a shell script breaks the
+# shebang: `#!/bin/sh\r` is not an interpreter anyone has.
+* text=auto eol=lf
+
+# Never touched by normalisation.
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
+*.hbc binary
