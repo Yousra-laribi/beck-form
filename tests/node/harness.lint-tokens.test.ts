@@ -14,9 +14,9 @@ const SCRIPT = join(process.cwd(), 'scripts', 'lint-tokens.mjs');
 
 type Run = { code: number; out: string };
 
-function runLinter(targetDir: string): Run {
+function run(args: string[]): Run {
   try {
-    const out = execFileSync(process.execPath, [SCRIPT, targetDir], {
+    const out = execFileSync(process.execPath, [SCRIPT, ...args], {
       encoding: 'utf8',
       stdio: 'pipe',
     });
@@ -26,6 +26,12 @@ function runLinter(targetDir: string): Run {
     return { code: e.status, out: `${e.stdout}${e.stderr}` };
   }
 }
+
+/** Scan one directory, the way the file-literal cases want. */
+const runLinter = (targetDir: string): Run => run([targetDir]);
+
+/** Treat a directory as a project root: scans src/ and app/, cross-checks app.json. */
+const runRoot = (root: string): Run => run(['--root', root]);
 
 let dir: string;
 
@@ -92,5 +98,80 @@ describe('lint:tokens', () => {
   it('does not scan non-source files', () => {
     write('notes.md', `background: #8B5E70`);
     expect(runLinter(dir).code).toBe(0);
+  });
+
+  it('lets the token file itself hold literals', () => {
+    write(join('src', 'theme', 'tokens.ts'), `export const c = { papier: '#E9ECF1' };`);
+    const { code } = runRoot(dir);
+    expect(code).toBe(0);
+  });
+});
+
+/**
+ * app.json is the only permitted exception to the no-literal rule: native
+ * config is read by the build system and cannot import TypeScript. The
+ * cross-check is what keeps it an exception rather than a loophole.
+ */
+describe('lint:tokens — app.json cross-check', () => {
+  function writeTokens(hexes: string[]) {
+    write(
+      join('src', 'theme', 'tokens.ts'),
+      `export const couleurs = {\n${hexes.map((h, i) => `  c${i}: '${h}',`).join('\n')}\n};`
+    );
+  }
+
+  function writeConfig(hex: string) {
+    write('app.json', JSON.stringify({ expo: { splash: { backgroundColor: hex } } }, null, 2));
+  }
+
+  it('accepts a hex that tokens.ts declares', () => {
+    writeTokens(['#E9ECF1']);
+    writeConfig('#E9ECF1');
+    const { code, out } = runRoot(dir);
+    expect(out).toContain('app.json cross-checked');
+    expect(code).toBe(0);
+  });
+
+  it('ignores case when matching', () => {
+    writeTokens(['#E9ECF1']);
+    writeConfig('#e9ecf1');
+    expect(runRoot(dir).code).toBe(0);
+  });
+
+  it('rejects a hex that tokens.ts does not declare', () => {
+    writeTokens(['#E9ECF1']);
+    writeConfig('#123456');
+    const { code, out } = runRoot(dir);
+    expect(code).toBe(1);
+    expect(out).toContain('#123456');
+    expect(out).toContain('app.json');
+  });
+
+  it('does not accept a hex that appears only in a comment', () => {
+    // tokens.ts records the values it replaced. A "was #8A91A1" note must not
+    // be enough to satisfy the cross-check, or the exception drifts.
+    write(
+      join('src', 'theme', 'tokens.ts'),
+      `/* encre3 was #8A91A1, now: */\nexport const couleurs = { encre3: '#616879' };`
+    );
+    writeConfig('#8A91A1');
+    const { code, out } = runRoot(dir);
+    expect(code).toBe(1);
+    expect(out).toContain('#8A91A1');
+  });
+
+  it('says nothing when there is no native config', () => {
+    writeTokens(['#E9ECF1']);
+    const { code, out } = runRoot(dir);
+    expect(code).toBe(0);
+    expect(out).not.toContain('app.json');
+  });
+});
+
+describe('the real repository', () => {
+  it('passes its own linter', () => {
+    const { code, out } = runRoot(process.cwd());
+    expect(out).toContain('clean');
+    expect(code).toBe(0);
   });
 });

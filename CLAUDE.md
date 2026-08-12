@@ -9,6 +9,8 @@ around.
 
 **If a rule here blocks something reasonable, say so and stop. Do not route around it.**
 
+**No test in tests/ may be weakened, skipped, or narrowed to make a change pass. If a test is wrong, say so and stop.**
+
 ---
 
 ## 1. What this is
@@ -43,8 +45,7 @@ contains deliberate decisions. Do not reinvent or "improve" them without asking 
 
 ## 3. Data invariants — hard rules
 
-These four govern the persistence layer. Each has a test; the tests are not optional and must not be
-weakened to make a change pass.
+These five govern the persistence layer. Each has a test.
 
 ### 3.1 Append-only
 
@@ -62,6 +63,9 @@ Enforced structurally, not just by convention:
   `INSERT OR REPLACE`.
 - Consequently: **the token `UPDATE` appears nowhere in `src/`.** A test greps for it with zero
   allowed exceptions. A rule with no carve-outs cannot quietly erode.
+- SQL keywords are always written in upper case in `src/db/`, enforced by lint. This is what makes
+  the upper-case `UPDATE` grep sound: without it, a lower-case `update` slips through, and with a
+  case-insensitive grep instead, every React `updateX` helper fails the build.
 
 ### 3.2 Identifiers, never labels
 
@@ -79,6 +83,16 @@ written in French stay in French inside an English UI.
 The eight distortions (definition, impact, questions) live in `content/`, not in code, and carry a
 version. `refVersion` is stamped on each record so an old record can always be displayed against the
 reference set it was written under.
+
+### 3.5 Migrations are immutable once shipped
+
+**Never edit a migration that has run on a device. Always add a new one.**
+
+A migration file is applied once per device and recorded. Editing `001_init.sql` after release
+means devices that already ran it never see the change, while fresh installs get a different schema — a divergence that surfaces months later as corrupt reads on the oldest, most valuable records.
+
+This is the same invariant as 3.1, applied to the schema instead of the rows: the past is appended to, never rewritten. A test asserts that migration files already committed are byte-identical to their committed version.
+
 
 ### The field names are the spec's, not the mockup's
 
@@ -209,6 +223,22 @@ Dates are stored as ISO 8601 and formatted for display via `Intl`. Never store a
 5. **No network egress.** No analytics, no telemetry, no third-party crash reporting, no remote web
    font. The app promises records never leave the phone. **Any dependency that opens a socket must
    be raised with the owner before being added.**
+6. **Never log record content.** No `console.*` of a `ThoughtRecord` or any of its text fields, in
+   any build, including development. If a repository function needs debugging, log the record `id`
+   and nothing else. Enforced by `no-console: error` in `src/db/` and `src/domain/`.
+
+   **Error handling never serialises the object it received.** This is the indirect path, and it is
+   the one that catches people: an error boundary that logs the failing component's props, a redbox
+   showing state, a `JSON.stringify` in a debug helper, a message built as
+   `` throw new Error(`bad record: ${JSON.stringify(r)}`) ``. None of these is a
+   `console.log(record)`; all of them put the text of a thought into the log. Error boundaries log
+   `error.message` and `componentStack` only. Exception messages cite `record.id`, never content.
+
+   *Why:* rule 5 stops records leaving over the network. It does nothing about them being written to
+   the device log, where any app with log access — and any crash-report dump — can read them. The
+   text of a thought record is the most sensitive data this app holds; that is the entire premise of
+   the privacy stance on the home page. A `console.log(record)` left in during a debugging session
+   is the most likely way that promise breaks, and it will not look like a breach when it happens.
 
 ### Blocked content — do not display
 
@@ -242,6 +272,8 @@ Neither is a component library nor a styling framework. Neither opens a socket. 
 `better-sqlite3`: real SQL in tests with no native module to compile. CI pins Node 24 for this
 reason.
 
+**No export path yet** — a standing debt, not merely out of scope. Records live only in the device's SQLite file. A lost or reset phone destroys every record with no recourse. There is real tension between health rule 5 and not losing someone's most personal writing, and "we never send anything anywhere" reads as a trap to a user who loses two years of records. A local export — user-initiated, to a file the user chooses, no network — resolves it without weakening rule 5. Owed before any public release.
+
 ---
 
 ## 8. Platform reality
@@ -272,17 +304,7 @@ with the mockup.
    writing the code, never after.** The rules are there to be discussed, not ignored. This has
    already paid for itself once: the contrast defect in §4.2 was found this way.
 
-### Batch status
-
-- **B0 — scaffolding** ✅ Expo + strict TS + expo-router + jest, the five scripts, pre-commit hook,
-  CI, this file.
-- B1 — tokens, both themes, contrast test, `lint:tokens` hardening
-- B2 — icon registry and UI primitives
-- B3 — i18n packs and parity test
-- B4 — versioned reference content and integrity test
-- B5 — domain types, SQLite, migrations, the four invariant tests
-- B6 — the journal route, reading the database for real
-- B7 — ADRs, README, acceptance walkthrough
+### Batch order and current status : See PLAN.md
 
 Out of scope for this phase, deliberately: the seven-step flow, the distortion sheet, the
 "Comprendre" page, re-rating UI, export. **Explicitly excluded from v1: any LLM assistance**
