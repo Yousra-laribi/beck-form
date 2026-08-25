@@ -6,7 +6,7 @@ import {
   type TextStyle,
 } from 'react-native';
 
-import { famille, type RolePolice } from '../theme/police';
+import { famille, type Graisse, type RolePolice } from '../theme/police';
 import { fluide } from '../theme/fluide';
 import { leading, tracking, type, typeFluide, type Couleurs } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
@@ -31,7 +31,8 @@ export type Variante =
   | 'legende'
   | 'etiquette'
   | 'chiffre'
-  | 'bouton';
+  | 'bouton'
+  | 'boutonDiscret';
 
 export interface TextProps extends RNTextProps {
   variante?: Variante;
@@ -45,7 +46,13 @@ type Recette = {
   taille: number;
   hauteur: keyof typeof leading;
   ton: Ton;
-  poids?: TextStyle['fontWeight'];
+  /**
+   * Selects the face, not a `fontWeight`. The bundled faces are one family per
+   * weight (see `theme/police.ts` for why), so weight travels through the
+   * family name and `fontWeight` is never set — setting both would ask Android
+   * to synthesise a bold on top of an already-bold face.
+   */
+  graisse?: Graisse;
   suivi?: keyof typeof tracking;
   capitales?: boolean;
 };
@@ -99,7 +106,17 @@ function recettes(largeur: number): Record<Variante, Recette> {
       taille: type.large,
       hauteur: 'compact',
       ton: 'surEncre',
-      poids: '600',
+      graisse: 600,
+    },
+    // .btn.ghost — same size, one weight lighter. The mockup is explicit about
+    // the difference; it was invisible until the real faces were bundled,
+    // because nothing was loaded to render 500 and 600 differently.
+    boutonDiscret: {
+      role: 'corps',
+      taille: type.large,
+      hauteur: 'compact',
+      ton: 'encre2',
+      graisse: 500,
     },
   };
 }
@@ -117,12 +134,11 @@ export function Text({ variante = 'corps', ton, style, ...rest }: TextProps) {
   const r = recettes(width)[variante];
 
   const resolu: TextStyle = {
-    fontFamily: famille(r.role),
+    fontFamily: famille(r.role, r.graisse),
     fontSize: r.taille,
     // React Native takes an absolute line height; the scale stores multipliers.
     lineHeight: r.taille * leading[r.hauteur],
     color: c[ton ?? r.ton],
-    ...(r.poids ? { fontWeight: r.poids } : {}),
     // CSS letter-spacing is in em here; React Native wants px.
     ...(r.suivi ? { letterSpacing: tracking[r.suivi] * r.taille } : {}),
     ...(r.capitales ? { textTransform: 'uppercase' as const } : {}),

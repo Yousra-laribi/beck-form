@@ -325,13 +325,15 @@ export const icone = {
 } as const;
 
 /**
- * Font families.
+ * Font families, at the design level.
  *
  * The mockup loads Newsreader, Karla and IBM Plex Mono from the Google Fonts
  * CDN, which health rule 5 forbids at runtime. All three are SIL OFL 1.1 and
- * are to be bundled into `assets/fonts/` (resolved as Q10). Until the .ttf
- * files land, these names resolve to the platform's generic families, which
- * preserves the serif / sans / mono distinction but not the exact metrics.
+ * are bundled into `assets/fonts/` with their licences (Q10, done).
+ *
+ * These are the *design* names. What React Native is actually handed is a
+ * per-weight family name resolved by `theme/police.ts` — one family per weight,
+ * because the acceptance target is Expo Go. That file carries the reasoning.
  */
 export const police = {
   titre: 'Newsreader',
@@ -339,7 +341,12 @@ export const police = {
   mono: 'IBM Plex Mono',
 } as const;
 
-/** Fallback stacks used until the bundled faces exist. */
+/**
+ * Generic stacks, used only if `POLICES_EMBARQUEES` is turned back off. They
+ * preserve the serif / sans / mono distinction but not the metrics: measured
+ * against the Android faces they resolve to, Karla sets 9.3% wider than Roboto
+ * and Newsreader's x-height is 20.5% smaller than Noto Serif's.
+ */
 export const policeSecours = {
   titre: 'serif',
   corps: 'sans-serif',
