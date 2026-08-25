@@ -36,7 +36,7 @@ export function Button({ titre, variante = 'principal', disabled, style, ...rest
       ]}
       {...rest}
     >
-      <Text variante="bouton" ton={principal ? 'surEncre' : 'encre2'} style={styles.titre}>
+      <Text variante={principal ? 'bouton' : 'boutonDiscret'} style={styles.titre}>
         {titre}
       </Text>
     </Pressable>
