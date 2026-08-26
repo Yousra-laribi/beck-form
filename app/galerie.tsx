@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ICONE_IDS } from '../src/icons/registry';
+import { PACKS } from '../src/i18n';
+import { libelleCrise, ressourceCrise } from '../src/region/crisis';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { radius, space, type Scheme } from '../src/theme/tokens';
 import { useTheme } from '../src/theme/useTheme';
-import { Button, Card, Chip, Footer, Icon, Mark, Text, Track } from '../src/ui';
+import { Button, Card, Chip, Footer, Icon, Mark, RichText, Text, Track } from '../src/ui';
 
 /**
  * Development gallery — every primitive, all 22 icons, both themes, both
@@ -37,7 +39,11 @@ const EXEMPLES = {
     corps:
       'Notez la situation telle qu’une caméra l’aurait filmée, sans interprétation ni jugement.',
     extrait: 'Je n’y arriverai jamais, tout le monde va s’en rendre compte.',
-    legende: 'En cas de danger immédiat, appelez le 3114 (24 h/24, gratuit).',
+    // Deliberately no crisis number here — it comes through `{crise}` below.
+    // A number written into a fixture is the same CLAUDE.md §5 failure as one
+    // written into a pack: it was France-only in French and vague in English,
+    // which is the region-versus-language confusion the resolver exists to end.
+    legende: 'Une légende, pour voir le palier `petit` sur deux lignes de texte.',
     etiquette: 'Constat',
     bouton: 'Continuer',
     discret: 'Revenir en arrière',
@@ -50,7 +56,7 @@ const EXEMPLES = {
     invite: 'What went through your mind?',
     corps: 'Write the situation as a camera would have filmed it, with no reading and no verdict.',
     extrait: 'I will never manage this, and everyone is going to notice.',
-    legende: 'If you are in immediate danger, call your local crisis line.',
+    legende: 'A caption, to see the `petit` step run over two lines of text.',
     etiquette: 'Observation',
     bouton: 'Continue',
     discret: 'Go back',
@@ -79,6 +85,12 @@ function Panneau({ langue }: { langue: Langue }) {
   const { c, scheme } = useTheme();
   const t = EXEMPLES[langue];
   const [chipActif, setChipActif] = useState(0);
+
+  // The real pack and the real resolver — the gallery is a review surface, so
+  // the marked-up strings below must be the ones that ship, not fixtures.
+  const pack = PACKS[langue];
+  const ressource = ressourceCrise(null);
+  const crise = { libelle: libelleCrise(ressource, langue), tel: ressource.tel };
 
   return (
     <View style={[styles.panneau, { backgroundColor: c.papier }]}>
@@ -111,6 +123,30 @@ function Panneau({ langue }: { langue: Langue }) {
       <Text variante="chiffre" style={styles.bloc}>
         8 → 3
       </Text>
+
+      <Separateur />
+      <Titre>RichText — les cinq marques</Titre>
+      {/*
+        The real strings from the packs, not fixtures: this is the surface the
+        owner reviews, so it has to show what actually ships. The crisis
+        resource is resolved through `src/region/crisis.ts`, which today means
+        the generic fallback — no number, and plain text rather than a link.
+      */}
+      <RichText variante="corps" crise={crise} style={styles.bloc}>
+        {pack.ui.s2Intro}
+      </RichText>
+      <RichText variante="legende" crise={crise} style={styles.bloc}>
+        {pack.ui.safety}
+      </RichText>
+      <RichText variante="corps" crise={crise} style={styles.bloc}>
+        {pack.ui.vide}
+      </RichText>
+      {/* The densest string in either pack: a quoted voice, a break, a number. */}
+      {pack.tour[2] ? (
+        <RichText variante="corps" crise={crise} style={styles.bloc}>
+          {pack.tour[2].ex}
+        </RichText>
+      ) : null}
 
       <Separateur />
       <Titre>Tons de texte</Titre>

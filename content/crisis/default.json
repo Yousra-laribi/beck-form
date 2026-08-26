@@ -1,0 +1,9 @@
+{
+  "region": "default",
+  "tel": null,
+  "libelle": {
+    "fr": "une ligne d'écoute près de chez vous",
+    "en": "a crisis line near you"
+  },
+  "_note": "The generic fallback, used when the region is unknown or not populated. It carries no number on purpose: inventing one, or defaulting to another country's, is worse than naming none. CLAUDE.md §5 requires this entry to exist from the start, before any region is populated."
+}

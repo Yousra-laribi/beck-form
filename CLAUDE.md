@@ -181,19 +181,38 @@ in English, and the interface shows a raw key in production.
 
 React Native has no `innerHTML`, and four `ui` strings plus three `tour` entries carry HTML in the
 mockup. Strings stay **one key each** (splitting them would weaken the parity test); a `<RichText>`
-primitive renders a four-mark subset:
+primitive renders a five-mark subset:
 
-| Mark | Renders |
-|---|---|
-| `**bold**` | emphasis |
-| `\n` | line break |
-| `{num}…{/num}` | tabular-numerals span |
-| `[text]({crisisTel})` | link to the crisis resource |
+| Mark | Was | Renders |
+|---|---|---|
+| `**bold**` | `<strong>` | emphasis |
+| `\n` | `<br>` | line break |
+| `{num}…{/num}` | `<span class="num">` | tabular-numerals span |
+| `{cit}…{/cit}` | `<em>` | quoted voice — the serif face, not italics |
+| `{crise}` | `<a href="#">3114</a>` | the crisis resource, label and target both |
 
-**The crisis link takes its target from `content/crisis/`, never from a language pack.** Crisis
-resources depend on **region, not language**: an English speaker in Paris needs 3114; a French
+The grammar lives in `src/i18n/marques.ts`, in one table shared by the renderer and the parity test,
+so the two cannot drift into a string that passes parity and renders as literal braces.
+
+**`{cit}` is not emphasis.** The mockup's `<em>` sets `font-style:normal` and switches the face to
+Newsreader (`.st-ex em`, `.recap dd em`). It marks a quoted thought — the person's own sentence, set
+in the serif — which is a different thing from `**bold**` and cannot be folded into it.
+
+**`{crise}` carries no text of its own, and that is the point.** It replaced an earlier
+`[text]({crisisTel})` form which parameterised the link *target* but left the label literal — so a
+pack would still have read `[3114]({crisisTel})`, putting a French phone number back inside a
+language pack. The English strings were worse: they carried `(France)`, `free, 24/7` and
+`or your local crisis line`, all of which are claims about a *region*, not a language.
+
+**The crisis resource comes from `content/crisis/`, never from a language pack — label included.**
+Crisis resources depend on **region, not language**: an English speaker in Paris needs 3114; a French
 speaker in Montreal does not. Hardcoding a number into a language string reintroduces exactly the
-bug the region structure exists to avoid.
+bug the region structure exists to avoid. A resource therefore carries its own wording per language
+(`libelle: { fr, en }`): the region picks the line, the language picks the phrasing, and adding a
+country is one file and no code.
+
+The parity test asserts that `ui.safety` and `ui.s6C` still carry the `{crise}` mark. If either
+stops, the crisis resource has silently left a screen that health rule 3 makes non-negotiable.
 
 Region resolves from the device via `expo-localization`, with an explicit user override that must
 stay **easy to reach** — someone travelling needs it. Unknown or unpopulated region falls back to a

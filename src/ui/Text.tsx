@@ -41,6 +41,27 @@ export interface TextProps extends RNTextProps {
   style?: StyleProp<TextStyle>;
 }
 
+/**
+ * Which face each role is set in.
+ *
+ * Held apart from `recettes()` because it is the one part of a recipe that does
+ * not depend on the window width, and `RichText` needs it: an inline `**bold**`
+ * inside a serif heading has to reach for the serif's weight, not the body's.
+ */
+export const ROLES = {
+  hero: 'titre',
+  invite: 'titre',
+  marque: 'titre',
+  titre: 'titre',
+  extrait: 'titre',
+  corps: 'corps',
+  legende: 'corps',
+  etiquette: 'mono',
+  chiffre: 'mono',
+  bouton: 'corps',
+  boutonDiscret: 'corps',
+} as const satisfies Record<Variante, RolePolice>;
+
 type Recette = {
   role: RolePolice;
   taille: number;

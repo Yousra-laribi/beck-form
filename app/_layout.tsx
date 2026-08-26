@@ -2,6 +2,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { langueAppareil, regionAppareil } from '../src/i18n/appareil';
+import { I18nProvider } from '../src/i18n/I18nProvider';
 import { FACES } from '../src/theme/police';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 
@@ -31,7 +33,15 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        {/*
+          Language and region come from the device for now. B5 replaces both with
+          stored preferences; the region override in particular has to stay easy
+          to reach (CLAUDE.md §5), because a traveller's device region is wrong
+          about the one thing that matters most here — the crisis line.
+        */}
+        <I18nProvider langue={langueAppareil()} region={regionAppareil()}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </I18nProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
